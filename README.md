@@ -1,2 +1,2 @@
 # MC-Uta
- A plugin for Mineflayer that allows advanced interaction with note blocks
+ A plugin for Mineflayer that allows for advanced interaction with note blocks
