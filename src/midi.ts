@@ -79,19 +79,8 @@ class midi_plugin {
         return note;
     }
 
-    // Generates the contents of a storable json file used to read songs
-    // In order to generate a song, we need to:
-
-    // [Note creation]
-    // - Convert notes to json wrapper format and place them into an array
-    // - Sort notes by their ticks
-    // - Set tick difference for sorted notes
-
-    // [Sequence creation]
-    // - Divide each tempo change into a sequence object
-    // - Go through every note and place it into its respective sequence, correspondant to its ticks. (Use a loop for this.)
-
-    private retreiveNotes(midi: Midi): note_wrapper[] {
+    // Generates the contents of a storable json file used to read songss
+    private generateNotes(midi: Midi): note_wrapper[] {
         let tracks = midi.tracks;
         let notes: note_wrapper[] = [];
 
@@ -149,11 +138,12 @@ class midi_plugin {
             let next_note: note_wrapper = sorted_notes[i + 1];
             note.difference = next_note.ticks - note.ticks;
         }
-        this.log(`Retreived ${sorted_notes.length} notes.`, 'retreiveNotes');
+        this.log(`Generated ${sorted_notes.length} notes.`, 'generateNotes');
         return sorted_notes;
     }
 
-    private retreiveSequences(midi: Midi, notes: note_wrapper[]): sequence_wrapper[] {
+    // Generates a sequence for each tempo change in the song and assigns notes within its duration
+    private generateSequences(midi: Midi, notes: note_wrapper[]): sequence_wrapper[] {
         let sequences: sequence_wrapper[] = [];
         let sorting_notes = notes;
         let tempos = midi.header.tempos;
@@ -189,15 +179,15 @@ class midi_plugin {
                 sequence.notes = sorting_notes;
             }
         }
-        this.log(`Created a total of ${sequences.length} sequences from ${notes.length} notes.`, 'retreiveSequences');
+        this.log(`Created a total of ${sequences.length} sequences from ${notes.length} notes.`, 'generateSequences');
         return sequences;
     }
 
     // Generates the contents of a storable json file used to read songs
     private generateSongData(midi: Midi, title: string): song_wrapper {
         let song = this.generateSongWrapper(title);
-        let notes = this.retreiveNotes(midi);
-        let sequences = this.retreiveSequences(midi, notes);
+        let notes = this.generateNotes(midi);
+        let sequences = this.generateSequences(midi, notes);
         song.title = title;
         song.sequences = sequences;
         this.log(`Generated song data for '${title}'.`, 'generateSongData');
@@ -218,6 +208,26 @@ class midi_plugin {
         let data = this.generateSongData(midi, title);
         fs.writeFileSync(path, JSON.stringify(data), 'utf8');
         this.log(`Created song '${title}' at '${path}'`, 'generateSongFile');
+    }
+
+    // Gets stored json song data from a json file
+    public retreiveSongData(path: string) {
+        let data = fs.readFileSync(path).toString();
+        let json = JSON.parse(data);
+        this.log(`Retreived json data from file '${path}'.`, 'retreiveSongData');
+        return json;
+    }
+
+    // Gets sequences from song data
+    public retreiveSequences(song: song_wrapper) {
+        this.log(`Retreived ${song.sequences.length} sequences from song '${song.title}'.`, 'retreiveSequences');
+        return song.sequences;
+    }
+
+    // Gets notes from sequence
+    public retreiveNotes(sequence: sequence_wrapper) {
+        this.log(`Retreived ${sequence.notes.length} notes from sequence at ${sequence.ticks} ticks.`, 'retreiveNotes');
+        return sequence.notes;
     }
 }
 
