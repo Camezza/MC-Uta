@@ -24,8 +24,8 @@ interface song_wrapper {
 
 // Methods
 
-class midi_plugin {
-    debug: boolean
+export class midi_plugin {
+    private debug: boolean
 
     constructor(debug: boolean) {
         this.debug = debug || false;
@@ -90,12 +90,7 @@ class midi_plugin {
 
             // Convert notes to json wrapper
             for (let x = 0, xl = track.notes.length; x < xl; x++) {
-                let note: note_wrapper = {
-                    key: track.notes[x].midi,
-                    ticks: track.notes[x].ticks,
-                    difference: -1,
-                };
-
+                let note = this.generateNoteWrapper(track.notes[x].midi, track.notes[x].ticks, -1);
                 notes.push(note);
             }
         }
@@ -151,11 +146,7 @@ class midi_plugin {
         // Create a new sequence for every tempo change
         for (let i = 0, il = tempos.length; i < il; i++) {
             let tempo = tempos[i];
-            let sequence: sequence_wrapper = {
-                tempo: tempo.bpm,
-                ticks: tempo.ticks,
-                notes: []
-            };
+            let sequence = this.generateSequenceWrapper(tempo.bpm, tempo.ticks);
             sequences.push(sequence);
         }
 
@@ -229,6 +220,28 @@ class midi_plugin {
         this.log(`Retreived ${sequence.notes.length} notes from sequence at ${sequence.ticks} ticks.`, 'retreiveNotes');
         return sequence.notes;
     }
-}
 
-export { midi_plugin };
+    // Gets an array of keys that are used in a song
+    public retreiveKeysUsed(song: song_wrapper): number[] {
+        let notes: note_wrapper[] = [];
+        let notes_used: number[] = [];
+        let sequences = song.sequences;
+        
+        // Grab all notes from the song
+        for (let i = 0, il = sequences.length; i < il; i++) {
+            let sequence = sequences[i];
+            notes.concat(sequence.notes);
+        }
+
+        // fill array of notes used
+        for (let i = 0, il = notes.length; i < il; i++) {
+            let note = notes[i];
+            if (!notes_used.includes(note.key)) {
+                notes_used.push(note.key);
+            }
+        }
+
+        this.log(`Retreived ${notes_used.length} keys currently used in song '${song.title}'`, 'retreiveKeysUsed');
+        return notes_used;
+    }
+}
