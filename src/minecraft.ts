@@ -1,4 +1,5 @@
 import * as mineflayer from 'mineflayer';
+import { type } from 'os';
 import * as vec3 from 'vec3';
 import { midi } from './midi';
 const plugin = new midi.plugin(true);
@@ -6,11 +7,12 @@ const plugin = new midi.plugin(true);
 export namespace minecraft {
 
     type note_block_type = 'drum' | 'bass' | 'harp' | 'bell' | null;
+    type note_block_sound = 'block.note_block.bassdrum' | 'block.note_block.bass' | 'block.note_block.harp' | 'block.note_block.bell';
 
-    const note_block_bell = ['gold_block'];
-    const note_block_bass = ['oak_planks', 'spruce_planks', 'birch_planks', 'acacia_planks', 'dark_oak_planks', 'jungle_planks']; // cannot be bothered adding them all. Someone fork & commit
-    const note_block_drum = ['stone', 'netherrack'];
-    const note_block_harp = ['air', 'note_block'];
+    type note_block_bell = 'gold_block';
+    type note_block_bass = 'oak_planks' | 'spruce_planks' | 'birch_planks' | 'acacia_planks' | 'dark_oak_planks' | 'jungle_planks'; // cannot be bothered adding them all. Someone fork & commit
+    type note_block_drum = 'stone' | 'netherrack'; // likewise!
+    type note_block_harp = 'air' | 'note_block'; // we probably don't need to use this in the future and instead can blacklist blocks that cause other sounds
 
     interface note_block_wrapper {
         key: number,
@@ -45,7 +47,7 @@ export namespace minecraft {
 
             // Only log messages during debugging
             if (this.debug) {
-                console.log(`\x1b[35m[${header}] \x1b[0m${error ? '\x1b[31m' : '\x1b[2m'}${message}\x1b[0m`);
+                console.log(`\x1b[32m[${header}] \x1b[0m${error ? '\x1b[31m' : '\x1b[2m'}${message}\x1b[0m`);
             }
         }
 
@@ -79,24 +81,74 @@ export namespace minecraft {
             return note_block;
         }
 
-        private retreiveBlockType(note_block: note_block_type): note_block_block {
-            let block: note_block_block;
+        private retreiveNoteBlockSound(note_block: note_block_type): note_block_sound {
+            let sound: note_block_sound;
             switch (note_block) {
                 case 'bell':
-                    block: note_block_bell = 'd';
+                    sound = 'block.note_block.bell';
+                    break;
 
+                case 'harp':
+                    sound = 'block.note_block.harp';
+                    break;
 
+                case 'bass':
+                    sound = 'block.note_block.bass';
+                    break;
+
+                case 'drum':
+                    sound = 'block.note_block.bassdrum';
+                    break;
+
+                default:
+                    this.log(`FATAL: Cannot determine sound for type of 'null'.`, 'retreiveNoteBlockSound', true);
+                    throw (`Program terminated to prevent internal error. Please enable debugging for details.`);
             }
+            return sound;
         }
 
-        public generateNoteBlockWrapper(note: midi.note_wrapper): note_block_wrapper {
-            let note_block: note_block_wrapper = {
-                key: note.key,
-                type: this.retreiveKeyType(note.key),
-                block: null,
-                position: null,
+        private retreiveNoteBlockPitch(key: number): number {
+            let pitch: number;
+            let note_block = this.retreiveKeyType(key);
+            let relative_key;
+
+            // Find the relative key (0-24) for a note block & determine the pitch from that value
+            switch (note_block) {
+                case 'bell':
+                    relative_key = key - 58;
+                    break;
+
+                case 'harp':
+                    relative_key = key - 34;
+                    break;
+
+                case 'bass':
+                    relative_key = key - 10;
+                    break;
+
+                case 'drum':
+                    relative_key = key - 2;
+                    break;
+
+                default:
+                    this.log(`FATAL: Cannot determine pitch for type of 'null'.`, 'retreiveNoteBlockPitch', true);
+                    throw (`Program terminated to prevent internal error. Please enable debugging for details.`);                    
+
             }
+            pitch = 2^((relative_key - 12)/12);
+            return pitch;
+        }
+
+        public generateNoteBlockWrapper(key: number, type: note_block_type, block?: string | null, position?: vec3.Vec3 | null): note_block_wrapper {
+            let note_block: note_block_wrapper = {
+                key: key,
+                type: this.retreiveKeyType(key),
+                block: block || null,
+                position: position || null,
+            }
+            this.log(`Generated note block wrapper with key '${note_block.key}' and type '${note_block.type}'`, 'generateNoteBlockWrapper');
             return note_block;
         }
+
     }
 }

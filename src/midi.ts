@@ -3,6 +3,8 @@ import * as fs from 'fs';
 
 export namespace midi {
 
+    type pause_reasons = 'end' | 'error' | 'interrupt';
+
     export interface note_wrapper {
         key: number,
         ticks: number,
@@ -239,6 +241,32 @@ export namespace midi {
 
             this.log(`Retreived ${notes_used.length} keys currently used in song '${song.title}'`, 'retreiveKeysUsed');
             return notes_used;
+        }
+
+        public playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, pause_event_callback?: (reason: string, song?: song_wrapper) => void, pause?: boolean) {
+            let noop = () => { };
+            let pause_event = pause_event_callback || noop;
+            let playing_song = song;
+            let sequences = playing_song.sequences;
+            pause = pause || false;
+
+            for (let i = 0, il = sequences.length; i < il; i++) {
+                let sequence = sequences[i];
+                let tempo = sequence.tempo;
+                let notes = sequence.notes;
+
+                // Called whenever a new note is to be played
+                let next_note = (note: note_wrapper | undefined) => {
+                    if (note === undefined) {
+                        pause_event('end', playing_song);
+                    }
+
+                    else {
+                        play_event_callback(note);
+                        setTimeout(() => next_note(notes.shift()), note.difference * tempo);
+                    };
+                }
+            }
         }
     }
 }
