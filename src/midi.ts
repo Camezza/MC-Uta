@@ -3,7 +3,7 @@ import * as fs from 'fs';
 
 export namespace midi {
 
-    type pause_reasons = 'end' | 'error' | 'interrupt';
+    type pause_reason = 'end' | 'error' | 'interrupt';
 
     export interface note_wrapper {
         key: number,
@@ -19,6 +19,7 @@ export namespace midi {
 
     export interface song_wrapper {
         title: string,
+        ppq: number,
         sequences: sequence_wrapper[],
     }
 
@@ -30,7 +31,7 @@ export namespace midi {
         }
 
         // Logs detailed messages to the console if debugging is enabled
-        private log(message: string, header?: string, error?: boolean) {
+        private async log(message: string, header?: string, error?: boolean) {
             header = header || "Log";
             error = error || false;
 
@@ -41,10 +42,11 @@ export namespace midi {
         }
 
         // Generates an object that holds sequences of a midi files
-        private generateSongWrapper(title: string, sequences?: sequence_wrapper[]): song_wrapper {
+        private generateSongWrapper(title: string, ppq: number, sequences?: sequence_wrapper[]): song_wrapper {
             sequences = sequences || [];
             let song: song_wrapper = {
                 title: title,
+                ppq: ppq,
                 sequences: sequences,
             }
 
@@ -88,7 +90,8 @@ export namespace midi {
 
                 // Convert notes to json wrapper
                 for (let x = 0, xl = track.notes.length; x < xl; x++) {
-                    let note = this.generateNoteWrapper(track.notes[x].midi, track.notes[x].ticks, -1);
+                    let updated_key = track.notes[x].midi; // Pianos have 88 keys - midi has 128. Minus 20 to match piano range, as only piano songs will be imported.
+                    let note = this.generateNoteWrapper(updated_key, track.notes[x].ticks, -1);
                     notes.push(note);
                 }
             }
@@ -149,7 +152,7 @@ export namespace midi {
             }
 
             // Sort notes into each sequence
-            for (let i = 0, il = sequences.length - 1 < 1 ? 1 : sequences.length - 1; i < il; i++) {
+            for (let i = 0, il = sequences.length; i < il; i++) {
                 let sequence = sequences[i];
 
                 // Not the last sequence, able to get next sequence
@@ -174,10 +177,9 @@ export namespace midi {
 
         // Generates the contents of a storable json file used to read songs
         private generateSongData(midi: Midi, title: string): song_wrapper {
-            let song = this.generateSongWrapper(title);
+            let song = this.generateSongWrapper(title, midi.header.ppq);
             let notes = this.generateNotes(midi);
             let sequences = this.generateSequences(midi, notes);
-            song.title = title;
             song.sequences = sequences;
             this.log(`Generated song data for '${title}'.`, 'generateSongData');
             return song;
@@ -243,30 +245,51 @@ export namespace midi {
             return notes_used;
         }
 
-        public playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, pause_event_callback?: (reason: string, song?: song_wrapper) => void, pause?: boolean) {
+        public async playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, pause_event_callback?: (reason: pause_reason, song?: song_wrapper) => void, pause?: boolean) {
             let noop = () => { };
             let pause_event = pause_event_callback || noop;
             let playing_song = song;
             let sequences = playing_song.sequences;
             pause = pause || false;
 
+            // Cannot use for loop as it will all be executed at once.
             for (let i = 0, il = sequences.length; i < il; i++) {
                 let sequence = sequences[i];
                 let tempo = sequence.tempo;
                 let notes = sequence.notes;
+                let note = notes.shift();
+                this.log(`Loading sequence with ${sequence.ticks} ticks and ${sequence.tempo} bpm`, 'playSong');
 
-                // Called whenever a new note is to be played
-                let next_note = (note: note_wrapper | undefined) => {
-                    if (note === undefined) {
-                        pause_event('end', playing_song);
+                // Repeats whenever a new note is to be played
+                while (note !== undefined) {
+                    
+                    // Pause boolean has been set to true
+                    if (pause) {
+                        this.log(`Song '${song.title}' was paused`, 'playSong');
+                        pause_event('interrupt', playing_song);
+                        return; // terminate
                     }
 
+                    // Await 'note' value for length of difference timeout
                     else {
+                        let last_note = note;
+
+                        // Wait for tick difference before returning a value
+                        let next_note = () => {
+                            return new Promise<note_wrapper | undefined>(
+                                (resolve) => {
+                                    setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (tempo * song.ppq)));
+                                }
+                            )
+                        }
+
+                        this.log(`Note '${note.key}' was played`, 'playSong');
                         play_event_callback(note);
-                        setTimeout(() => next_note(notes.shift()), note.difference * tempo);
-                    };
+                        note = await next_note();
+                    }
                 }
             }
+            pause_event('end', song);
         }
     }
 }

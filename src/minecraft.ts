@@ -2,7 +2,7 @@ import * as mineflayer from 'mineflayer';
 import { type } from 'os';
 import * as vec3 from 'vec3';
 import { midi } from './midi';
-const plugin = new midi.plugin(true);
+const midi_plugin = new midi.plugin();
 
 export namespace minecraft {
 
@@ -23,10 +23,8 @@ export namespace minecraft {
 
     /*
     This class will need to do a number of things:
-    - Recognise MIDI note values and be able to translate it to minecraft note-block sounds & pitches
     - Discover note blocks nearby and identify the block underneath to determine sound
     - Ability to 'tune' note blocks through listening for certain notes and right-clicking a certain amount of times
-    - A way of reading song json files & matching the keys and tempo with note blocks
     - Play + Pause songs.
     - Automatically fix note inaccuracies while playing a song through retuning selected note blocks
     */
@@ -51,26 +49,27 @@ export namespace minecraft {
             }
         }
 
+        // Retreives the type of block needed to mimic an octave. (+20, as midi starts two octaves below standard piano)
         private retreiveKeyType(key: number): note_block_type {
             let note_block: note_block_type;
 
             // Unable to cover 1+6 notes. (1, 83-88) (A0, G7-C8) 
-            if (key > 82 || key < 2) {
+            if (key > 82+20 || key < 2+20) {
                 note_block = null;
             }
 
             // Bell needs to cover 24 notes. (G5-F#7) (Range: F#5-F#7) (59-82)
-            else if (key > 58) {
+            else if (key > 58+20) {
                 note_block = 'bell';
             }
 
             // Harp needs to cover 25 notes. (F#3-F#5) (Range: F#3-F#5) (34-58)
-            else if (key > 33) {
+            else if (key > 33+20) {
                 note_block = 'harp';
             }
 
             // Bass needs to cover 24 notes. (F#1-F3) (Range: F#1-F#3) (10-33)
-            else if (key > 9) {
+            else if (key > 9+20) {
                 note_block = 'bass';
             }
 
@@ -115,27 +114,27 @@ export namespace minecraft {
             // Find the relative key (0-24) for a note block & determine the pitch from that value
             switch (note_block) {
                 case 'bell':
-                    relative_key = key - 58;
+                    relative_key = key - 58 - 20;
                     break;
 
                 case 'harp':
-                    relative_key = key - 34;
+                    relative_key = key - 34 - 20;
                     break;
 
                 case 'bass':
-                    relative_key = key - 10;
+                    relative_key = key - 10 - 20;
                     break;
 
                 case 'drum':
-                    relative_key = key - 2;
+                    relative_key = key - 2 - 20;
                     break;
 
                 default:
                     this.log(`FATAL: Cannot determine pitch for type of 'null'.`, 'retreiveNoteBlockPitch', true);
-                    throw (`Program terminated to prevent internal error. Please enable debugging for details.`);                    
+                    throw (`Program terminated to prevent internal error. Please enable debugging for details.`);
 
             }
-            pitch = 2^((relative_key - 12)/12);
+            pitch = 2 ** ((relative_key - 12) / 12);
             return pitch;
         }
 
@@ -148,6 +147,17 @@ export namespace minecraft {
             }
             this.log(`Generated note block wrapper with key '${note_block.key}' and type '${note_block.type}'`, 'generateNoteBlockWrapper');
             return note_block;
+        }
+
+        public test(song: midi.song_wrapper) {
+            let note_handler = (note: midi.note_wrapper) => {
+                if (note.key < 103 && note.key > 21) {
+                    let pitch = this.retreiveNoteBlockPitch(note.key);
+                    let sound = this.retreiveNoteBlockSound(this.retreiveKeyType(note.key));
+                    this.bot.chat(`/playsound minecraft:${sound} ambient @a ~ ~ ~ 10 ${pitch}`);
+                }
+            }
+            midi_plugin.playSong(song, note_handler);
         }
 
     }
