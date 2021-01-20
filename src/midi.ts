@@ -3,7 +3,7 @@ import * as fs from 'fs';
 
 export namespace midi {
 
-    type pause_reason = 'end' | 'error' | 'interrupt';
+    export type pause_reason = 'end' | 'error' | 'interrupt';
 
     export interface note_wrapper {
         key: number,
@@ -230,7 +230,7 @@ export namespace midi {
             // Grab all notes from the song
             for (let i = 0, il = sequences.length; i < il; i++) {
                 let sequence = sequences[i];
-                notes.concat(sequence.notes);
+                notes = notes.concat(sequence.notes);
             }
 
             // fill array of notes used
