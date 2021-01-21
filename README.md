@@ -1,2 +1,8 @@
-# MC-Uta
- A plugin for Mineflayer that allows for advanced interaction with note blocks
+<h1 align='center'>
+  MC-Uta
+</h1>
+<p align='center'><i>
+  A plugin for mineflayer allowing for advanced interaction with note blocks.
+
+---
+
