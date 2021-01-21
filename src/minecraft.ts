@@ -419,13 +419,13 @@ export namespace minecraft {
         }
 
         // Plays a midi song using note blocks specified
-        public async playNoteBlockSong(midi_path: string, note_blocks: note_block_wrapper[], callback?: (reason: midi.pause_reason, song?: midi.song_wrapper) => void, pause?: midi.pause_reason) {
+        public async playNoteBlockSong(song_path: string, note_blocks: note_block_wrapper[], callback?: (reason: midi.pause_reason, song?: midi.song_wrapper) => void, pause?: midi.pause_reason) {
             pause = pause || 'none';
-            let song_folder_path = './songs';
+            let song_folder_path = './cache';
             let song_name = 'cache';
 
             // Generate song data for midi
-            let data = midi_plugin.readMidiFile(midi_path);
+            let data = midi_plugin.readMidiFile(song_path);
             let file = midi_plugin.generateSongFile(data, song_folder_path, song_name, data.name);
             let song = midi_plugin.retreiveSongData(`${song_folder_path}/${song_name}.json`);
 

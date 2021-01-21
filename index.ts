@@ -16,7 +16,7 @@ bot.once('login', () => {
     setTimeout(() => {
         if (bot.game.gameMode === 'survival') {
             let note_blocks = minecraft_plugin.retreiveNearbyNoteBlocks();
-            minecraft_plugin.playNoteBlockSong('midi/this_game.mid', note_blocks, (reason) => {console.log(`Midi was paused: ${reason}`)});
+            minecraft_plugin.playNoteBlockSong('midi/owen_impossible.mid', note_blocks, (reason) => {console.log(`Midi was paused: ${reason}`)});
         }
     }, 3000);
 });
