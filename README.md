@@ -1,2 +1,8 @@
-<h1>MC-Uta</h1>
-<p>MC-Uta is a plugin for mineflayer that allows for a flexible and API for interaction with note blocks, including the ability to import MIDI Files and play them in real time.</p>
+<h1 align='center'>
+  MC-Uta
+</h1>
+<p align='center'><i>
+  A plugin for mineflayer allowing for advanced interaction with note blocks.
+
+---
+
