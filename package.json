@@ -1,0 +1,19 @@
+{
+  "name": "mc-uta",
+  "version": "1.0.0",
+  "description": "A mineflayer plugin allowing for advanced interaction with note blocks.",
+  "main": "mc_uta.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Camezza/MC-Uta.git"
+  },
+  "author": "firejoust",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Camezza/MC-Uta/issues"
+  },
+  "homepage": "https://github.com/Camezza/MC-Uta#readme"
+}

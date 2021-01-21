@@ -4,7 +4,7 @@ import * as vec3 from 'vec3';
 import { midi } from './midi';
 const midi_plugin = new midi.plugin(true);
 
-export namespace minecraft {
+export namespace mc_uta {
 
     export type note_block_type = 'basedrum' | 'bass' | 'harp' | 'bell' | null;
     export type note_block_sound = 'block.note_block.basedrum' | 'block.note_block.bass' | 'block.note_block.harp' | 'block.note_block.bell';

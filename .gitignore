@@ -354,7 +354,6 @@ MigrationBackup/
 
 # Custom
 package-lock.json
-package.json
 tsconfig.json
 .git
 .gitattributes
