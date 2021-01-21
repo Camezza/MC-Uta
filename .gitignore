@@ -359,3 +359,4 @@ tsconfig.json
 .git
 .gitattributes
 .gitignore
+.DS_store
