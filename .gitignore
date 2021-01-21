@@ -353,7 +353,9 @@ MigrationBackup/
 .ionide/
 
 # Custom
-midi
-songs/*
+package-lock.json
+package.json
 tsconfig.json
-tutorial.ts
+.git
+.gitattributes
+.gitignore
