@@ -4,7 +4,7 @@ import * as mineflayer from 'mineflayer';
 
 let options = {
     host: `192.168.0.51`,
-    port: 50675,
+    port: 50760,
     username: `Uta`,
     version: `1.16.4`,
 };
@@ -16,11 +16,7 @@ bot.once('login', () => {
     setTimeout(() => {
         if (bot.game.gameMode === 'survival') {
             let note_blocks = minecraft_plugin.retreiveNearbyNoteBlocks();
-            minecraft_plugin.playNoteBlockSong('midi/bad_apple.mid', note_blocks);
+            minecraft_plugin.playNoteBlockSong('midi/this_game.mid', note_blocks, (reason) => {console.log(`Midi was paused: ${reason}`)});
         }
     }, 3000);
 });
-
-bot.on('noteHeard', (block, instrument, pitch) => {
-    console.log(`[${instrument.name}] Located at ${block.position} with pitch ${pitch}`);
-})

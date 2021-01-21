@@ -3,7 +3,7 @@ import * as fs from 'fs';
 
 export namespace midi {
 
-    export type pause_reason = 'end' | 'error' | 'interrupt';
+    export type pause_reason = 'none' | 'end' | 'error' | 'interrupt';
 
     export interface note_wrapper {
         key: number,
@@ -222,7 +222,7 @@ export namespace midi {
         }
 
         // Gets an array of keys that are used in a song
-        public retreiveKeysUsed(song: song_wrapper): number[] {
+        public retreiveKeyRange(song: song_wrapper): number[] {
             let notes: note_wrapper[] = [];
             let notes_used: number[] = [];
             let sequences = song.sequences;
@@ -245,12 +245,12 @@ export namespace midi {
             return notes_used;
         }
 
-        public async playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, pause_event_callback?: (reason: pause_reason, song?: song_wrapper) => void, pause?: boolean) {
+        public async playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, pause_event_callback?: (reason: pause_reason, song?: song_wrapper) => void, pause?: pause_reason) {
             let noop = () => { };
             let pause_event = pause_event_callback || noop;
             let playing_song = song;
             let sequences = playing_song.sequences;
-            pause = pause || false;
+            pause = pause || 'none';
 
             // Cannot use for loop as it will all be executed at once.
             for (let i = 0, il = sequences.length; i < il; i++) {
@@ -261,12 +261,12 @@ export namespace midi {
                 this.log(`Loading sequence with ${sequence.ticks} ticks and ${sequence.tempo} bpm`, 'playSong');
 
                 // Repeats whenever a new note is to be played
-                while (note !== undefined) {
+                while (note !== undefined && pause === 'none') {
                     
                     // Pause boolean has been set to true
-                    if (pause) {
+                    if (pause !== 'none') {
                         this.log(`Song '${song.title}' was paused`, 'playSong');
-                        pause_event('interrupt', playing_song);
+                        pause_event(pause, playing_song);
                         return; // terminate
                     }
 

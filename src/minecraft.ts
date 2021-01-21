@@ -1,15 +1,14 @@
 import * as mineflayer from 'mineflayer';
 import * as prismarine_block from 'prismarine-block';
-import { type } from 'os';
+import { stringify } from 'querystring';
 import * as vec3 from 'vec3';
 import { midi } from './midi';
-import { resolve } from 'path';
 const midi_plugin = new midi.plugin(true);
 
 export namespace minecraft {
 
-    type note_block_type = 'basedrum' | 'base' | 'harp' | 'bell' | null;
-    type note_block_sound = 'block.note_block.basedrum' | 'block.note_block.base' | 'block.note_block.harp' | 'block.note_block.bell';
+    type note_block_type = 'basedrum' | 'bass' | 'harp' | 'bell' | null;
+    type note_block_sound = 'block.note_block.basedrum' | 'block.note_block.bass' | 'block.note_block.harp' | 'block.note_block.bell';
 
     const note_block_bell = ['gold_block'];
     const note_block_base = ['oak_planks', 'spruce_planks', 'birch_planks', 'acacia_planks', 'dark_oak_planks', 'jungle_planks']; // cannot be bothered adding them all. Someone fork & commit
@@ -68,9 +67,9 @@ export namespace minecraft {
                 note_block = 'harp';
             }
 
-            // base needs to cover 24 notes. (F#1-F3) (Range: F#1-F#3) (10-33)
+            // bass needs to cover 24 notes. (F#1-F3) (Range: F#1-F#3) (10-33)
             else if (key > 9 + 20) {
-                note_block = 'base';
+                note_block = 'bass';
             }
 
             // basedrum needs to cover 8 notes. (A0-F1) (Range: A#0-A#2) (2-9) (basedrum starts at A#0)
@@ -91,8 +90,8 @@ export namespace minecraft {
                     sound = 'block.note_block.harp';
                     break;
 
-                case 'base':
-                    sound = 'block.note_block.base';
+                case 'bass':
+                    sound = 'block.note_block.bass';
                     break;
 
                 case 'basedrum':
@@ -107,7 +106,12 @@ export namespace minecraft {
         }
 
         private retreiveNoteBlockPitch(key: number): number {
-            let pitch: number;
+            let relative_key = this.retreiveNoteBlockRelativeKey(key);
+            let pitch = 2 ** ((relative_key - 12) / 12);
+            return pitch;
+        }
+
+        private retreiveNoteBlockRelativeKey(key: number): number {
             let note_block = this.retreiveKeyType(key);
             let relative_key;
 
@@ -121,7 +125,7 @@ export namespace minecraft {
                     relative_key = key - 34 - 20;
                     break;
 
-                case 'base':
+                case 'bass':
                     relative_key = key - 10 - 20;
                     break;
 
@@ -130,12 +134,10 @@ export namespace minecraft {
                     break;
 
                 default:
-                    this.log(`FATAL: Cannot determine pitch for type of 'null'.`, 'retreiveNoteBlockPitch', true);
+                    this.log(`FATAL: Cannot determine relative key for type of 'null'.`, 'retreiveNoteBlockRelativeKey', true);
                     throw (`Program terminated to prevent internal error. Please enable debugging for details.`);
-
             }
-            pitch = 2 ** ((relative_key - 12) / 12);
-            return pitch;
+            return relative_key;
         }
 
         public generateNoteBlockWrapper(key: number, type: note_block_type, block: string, position: vec3.Vec3): note_block_wrapper {
@@ -182,9 +184,9 @@ export namespace minecraft {
                                     note_block = this.generateNoteBlockWrapper(-1, 'bell', tone_block_type, block_position);
                                 }
 
-                                // base
+                                // bass
                                 else if (note_block_base.includes(tone_block_type)) {
-                                    note_block = this.generateNoteBlockWrapper(-1, 'base', tone_block_type, block_position);
+                                    note_block = this.generateNoteBlockWrapper(-1, 'bass', tone_block_type, block_position);
                                 }
 
                                 // basedrum
@@ -214,7 +216,7 @@ export namespace minecraft {
                 this.bot._client.write('block_dig', {
                     status: 0,
                     location: position,
-                    face: 1 // play noteblock from the top
+                    face: 1 // play note block from the top
                 });
                 return true;
             }
@@ -236,133 +238,172 @@ export namespace minecraft {
             else return false;
         }
 
-        // returns midi key types that were not assigned to note blocks
+        // get number of available keys
         private retreiveRequiredTypes(note_blocks: note_block_wrapper[], key_range: number[]): note_block_type[] {
-            let remaining_note_block_types: note_block_type[] = [];
-            let note_block_types: note_block_type[] = [];
+            let note_types: note_block_type[] = ['basedrum', 'bass', 'harp', 'bell'];
+            let available_types: Record<string, number> = { basedrum: 0, base: 0, harp: 0, bell: 0 };
+            let required_types: Record<string, number> = { basedrum: 0, base: 0, harp: 0, bell: 0 };
+            let types: note_block_type[] = [];
 
-            // Add all needed midi keys (types) to an array
+            // get the number of available keys
+            note_blocks.forEach((note_block: note_block_wrapper) => {
+                let type = note_block.type;
+
+                // only allow keys playable on note blocks
+                if (type !== null) {
+                    available_types[type]++;
+                }
+            });
+
+            // Get the number of required keys
+            key_range.forEach((key: number) => {
+                let type = this.retreiveKeyType(key);
+
+                // only allow keys playable on note blocks
+                if (type !== null) {
+                    required_types[type]++;
+                }
+            });
+
+            let assigned_types: Record<string, number> = {
+                basedrum: required_types.basedrum - available_types.basedrum,
+                bass: required_types.bass - available_types.bass,
+                harp: required_types.harp - available_types.harp,
+                bell: required_types.bell - available_types.bell,
+            };
+
+            let add_duplicate_types = (type: note_block_type, count: number) => {
+                count = count < 0 ? 0 : count;
+
+                // Add duplicate types to array
+                for (let i = 0, il = count; i < il; i++) {
+                    types.push(type);
+                }
+            }
+
+            for (let i = 0, il = note_types.length; i < il; i++) {
+                let type = note_types[i];
+
+                if (type !== null) {
+                    add_duplicate_types(type, assigned_types[type]);
+                }
+            }
+            return types;
+        }
+
+        private retreiveNoteBlockKeyRange(key_range: number[]): number[] {
+            let note_block_key_range: number[] = [];
             for (let i = 0, il = key_range.length; i < il; i++) {
                 let key = key_range[i];
                 let type = this.retreiveKeyType(key);
-                remaining_note_block_types.push(type);
-            }
 
-            // Add all available note blocks (types) to an array
-            for (let i = 0, il = note_blocks.length; i < il; i++) {
-                let note_block = note_blocks[i];
-                let type = note_block.type;
-                note_block_types.push(type);
-            }
-
-            // set index
-            let remaining_nb_index = 0;
-
-            // match remaining types with available types
-            while (remaining_nb_index < remaining_note_block_types.length) {
-                let remaining_note_block_type = remaining_note_block_types[remaining_nb_index];
-                let remaining_nb_length = remaining_note_block_types.length;
-                let nb_index = 0;
-
-                // available note block types
-                while (nb_index < note_block_types.length) {
-                    let note_block_type = note_block_types[nb_index];
-
-                    // a note block is available for the midi key
-                    if (remaining_note_block_type === note_block_type) {
-                        remaining_note_block_types.splice(remaining_nb_index); // remove required midi key from remaining array
-                        note_block_types.splice(nb_index); // remove the now unavailable note block type
-                        break; // kill loop
-                    }
-
-                    else nb_index++;
-                }
-
-                // Array hasn't changed, move index up
-                if (remaining_note_block_types.length === remaining_nb_length) {
-                    remaining_nb_index++;
+                // Key can be played on a note block (Has type)
+                if (type !== null) {
+                    note_block_key_range.push(key);
                 }
             }
-
-            // Return keys that were not assigned to note blocks
-            this.log(`Found ${remaining_note_block_types.length} keys that were unable to be assigned to note blocks`, 'retreiveRequiredTypes');
-            return remaining_note_block_types;
+            return note_block_key_range;
         }
 
-        // Adds midi values to note block objects & returns null when there aren't enough note blocks for all the keys.
-        private assignNoteBlockKeys(note_blocks: note_block_wrapper[], key_range: number[]): note_block_wrapper[] | null {
-            let assigned_note_blocks: note_block_wrapper[] = [];
-            let counter = 0;
-            let required = key_range.length;
+        // Sorts note blocks by their type in a record
+        private sortNoteBlocksByType(note_blocks: note_block_wrapper[]): Record<string, note_block_wrapper[]> {
+            let sorted_note_blocks: Record<string, note_block_wrapper[]> = { basedrum: [], bass: [], harp: [], bell: [] };
 
-            // try for each midi key
-            for (let i = 0; i < required; i++) {
+            // Sort each note block into type category
+            note_blocks.forEach((note_block) => {
+                let type = note_block.type;
+
+                // add note blocks with same type to array
+                if (type === null) throw new Error(`Unable to determine note block type 'null'`);
+                sorted_note_blocks[type].push(note_block);
+            });
+
+            return sorted_note_blocks;
+        }
+
+        // Sorts note blocks by their key in a record
+        private sortNoteBlocksByKeys(note_blocks: note_block_wrapper[]): Record<number, note_block_wrapper> {
+            let sorted_note_blocks: Record<number, note_block_wrapper> = {};
+
+            // Add key entry for note block key
+            note_blocks.forEach((note_block) => {
+                let key = note_block.key;
+                if (sorted_note_blocks[key]) throw new Error(`Note block array cannot contain duplicate key values`);
+                sorted_note_blocks[key] = note_block;
+            });
+
+            return sorted_note_blocks;
+        }
+
+        private assignNoteBlockKeys(note_blocks: note_block_wrapper[], key_range: number[]): note_block_wrapper[] {
+            let sorted_note_blocks = this.sortNoteBlocksByType(note_blocks);
+            let assigned_note_blocks: note_block_wrapper[] = [];
+
+            for (let i = 0, il = key_range.length; i < il; i++) {
                 let key = key_range[i];
                 let type = this.retreiveKeyType(key);
 
-                // go through note block list
-                // ToDo: remove note blocks from note_blocks array for performance
-                for (let x = 0, xl = note_blocks.length; x < xl; x++) {
-                    let note_block = note_blocks[x];
+                // Cannot assign key to note block without a type
+                if (type === null) throw new Error(`Unable to determine note block type 'null'`);
+                let unassigned_note_block = sorted_note_blocks[type].shift();
 
-                    // noteblock has same sound, add
-                    if (type === note_block.type && note_block.key === -1) {
-                        assigned_note_blocks.push(this.generateNoteBlockWrapper(key, type, note_block.block, note_block.position));
-                        counter++;
-                        x = xl; // stop loop
-                    }
+                // Not enough note blocks for all keys
+                if (unassigned_note_block === undefined) {
+                    this.log(`ERROR: Not enough note blocks for keys`, 'assignNoteBlockKeys', true);
+                    throw new Error('Insufficient note blocks for key range');
                 }
-            }
 
-            // there are enough note blocks for keys
-            if (counter === required) {
-                this.log(`Successfully assigned ${required} keys to note blocks.`, 'assignNoteBlockKeys');
-                return assigned_note_blocks;
-            }
-
-            // not enough note blocks
-            else {
-                this.log(`ERROR: Not enough note blocks for midi key range! (${required - counter} required of ${required})`, 'assignNoteBlockKeys', true);
-                return null;
-            }
+                // Assign key to note block and add to array
+                else {
+                    let assigned_note_block = this.generateNoteBlockWrapper(key, type, unassigned_note_block.block, unassigned_note_block.position);
+                    assigned_note_blocks.push(assigned_note_block);
+                    this.log(`Successfully assigned note key '${key}' to note block at ${assigned_note_block.position}.`, 'assignNoteBlockKeys');
+                }
+            };
+            return assigned_note_blocks;
         }
 
-        // TODO: FIX THIS!!!!!!!!!
+        // TODO: Fix this spaghetti mess
         public async tuneNoteBlock(note_block: note_block_wrapper): Promise<note_block_wrapper | null> {
             return new Promise<note_block_wrapper | null>((resolve) => {
                 let position = note_block.position;
 
                 // Leaves a 50ms delay before incrementing a note block
                 let increment_timeout = async (block: note_block_wrapper): Promise<boolean> => {
-                    return new Promise<boolean> ((played) => {
+                    return new Promise<boolean>((played) => {
                         setTimeout(() => played(this.incrementNoteBlock(block)), 50);
                     });
                 }
 
                 // Handles note block sounds when played
-                let note_handler = async (block: prismarine_block.Block, instrument: mineflayer.Instrument, sound_key: number) => {
+                let note_handler = async (block: prismarine_block.Block, instrument: any, sound_key: number) => {
+                    this.log(`Sound received: '${instrument.name}' with key '${sound_key}'`, 'tuneNoteBlocks');
                     let sound_position = block.position;
 
                     // Sound sourced from same position as note block
                     if (position.equals(sound_position)) {
+                        let type = note_block.type
                         let sound_type = instrument.name;
 
-                        // Same sound type
-                        if (sound_type == note_block.type) {
-                            let difference = sound_key - note_block.key;
-                            let value = difference < 0 ? 24 + difference : difference;
+                        // Same sound
+                        if (sound_type == type) {
+                            this.bot.removeListener('noteHeard', note_handler);
+                            let difference = this.retreiveNoteBlockRelativeKey(note_block.key) - sound_key;
+                            let value = difference < 0 ? 25 + difference : difference;
 
                             // Tune note block
                             for (let i = 0, il = value; i < il; i++) {
                                 let success = await increment_timeout(note_block);
 
+                                // Tuning was unsuccessful; Unable to increment note block tone
                                 if (!success) {
+                                    this.log(`ERROR: Tuning insuccessful; Unable to increment note block tone`, 'tuneNoteBlock', true);
                                     resolve(null);
                                 }
                             }
 
                             // Remove sound listener
-                            this.bot.removeListener('noteHeard', note_handler);
+                            this.log(`Successfully tuned note block with key '${note_block.key}' & type '${note_block.type}'`, 'tuneNoteBlock');
                             resolve(note_block);
                         }
                     }
@@ -378,7 +419,8 @@ export namespace minecraft {
         }
 
         // Plays a midi song using note blocks specified
-        public async playNoteBlockSong(midi_path: string, note_blocks: note_block_wrapper[], callback?: (reason: midi.pause_reason, song?: midi.song_wrapper) => void, pause?: boolean) {
+        public async playNoteBlockSong(midi_path: string, note_blocks: note_block_wrapper[], callback?: (reason: midi.pause_reason, song?: midi.song_wrapper) => void, pause?: midi.pause_reason) {
+            pause = pause || 'none';
             let song_folder_path = './songs';
             let song_name = 'cache';
 
@@ -391,14 +433,33 @@ export namespace minecraft {
             // not currently needed as we specify through note_blocks parameter
 
             // Verify that we have the required note blocks to play
-            let midi_key_range = midi_plugin.retreiveKeysUsed(song);
-            let required_types = this.retreiveRequiredTypes(note_blocks, midi_key_range);
-            let verified_note_blocks = this.assignNoteBlockKeys(note_blocks, midi_key_range);
+            let midi_key_range = midi_plugin.retreiveKeyRange(song);
+            let note_block_key_range = this.retreiveNoteBlockKeyRange(midi_key_range);
+            let required_types = this.retreiveRequiredTypes(note_blocks, note_block_key_range);
+            let verified_note_blocks = this.assignNoteBlockKeys(note_blocks, note_block_key_range);
+            let sorted_note_blocks = this.sortNoteBlocksByKeys(verified_note_blocks);
+
+            // what to do when playing a note
+            let play_event = (note: midi.note_wrapper, sorted_note_blocks: Record<number, note_block_wrapper>) => {
+                let key = note.key;
+                let note_block = sorted_note_blocks[key];
+
+                // Key can be played on note block
+                if (note_block !== undefined) {
+                    let success = this.playNoteBlock(sorted_note_blocks[key]);
+
+                    // Unable to play note block (missing)
+                    if (!success) {
+                        pause = 'error';
+                        this.log(`ERROR: Unable to play note block!`, 'playNoteBlockSong', true);
+                    }
+                }
+            }
 
             console.log(required_types);
 
             // have enough note blocks for all required keys
-            if (verified_note_blocks !== null) {
+            if (required_types.length < 1) {
 
                 // tune all note blocks
                 for (let i = 0, il = verified_note_blocks.length; i < il; i++) {
@@ -406,35 +467,21 @@ export namespace minecraft {
 
                     // error has occured, unable to tune note block
                     if (note_block === null) {
-                        console.log("NOT SUCCESS");
-                        // error callback?
+                        pause = 'error';
+                        this.log(`ERROR: Note block was unable to be tuned`, 'playNoteBlockSong', true);
+                        i = il;
                     }
                 }
+            }
 
-                // what to do when playing a note
-                let play_event = (note: midi.note_wrapper) => {
-                    let key = note.key;
+            // Not enough note blocks for required song
+            else {
+                pause = 'error';
+                this.log(`ERROR: Missing note blocks required to play song`, 'playNoteBlockSong', true);
+            }
 
-                    // find the required note block & play note
-                    for (let i = 0, il = note_blocks.length; i < il; i++) {
-                        let note_block = note_blocks[i];
-
-                        if (note_block.key === key) {
-                            let success = this.playNoteBlock(note_block);
-
-                            // Unable to play note block!
-                            if (!success) {
-                                console.log("NOT SUCCESS");
-                                // pause song???
-                                // error callback???
-                            }
-                        }
-                    }
-                }
-
-                // play the song
-                midi_plugin.playSong(song, play_event, callback);
-            } // else error callback?
+            // play the song
+            midi_plugin.playSong(song, (note) => play_event(note, sorted_note_blocks), callback, pause);
         }
 
         public test(song: midi.song_wrapper) {
