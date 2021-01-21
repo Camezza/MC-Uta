@@ -7,15 +7,15 @@ const midi_plugin = new midi.plugin(true);
 
 export namespace minecraft {
 
-    type note_block_type = 'basedrum' | 'bass' | 'harp' | 'bell' | null;
-    type note_block_sound = 'block.note_block.basedrum' | 'block.note_block.bass' | 'block.note_block.harp' | 'block.note_block.bell';
+    export type note_block_type = 'basedrum' | 'bass' | 'harp' | 'bell' | null;
+    export type note_block_sound = 'block.note_block.basedrum' | 'block.note_block.bass' | 'block.note_block.harp' | 'block.note_block.bell';
 
     const note_block_bell = ['gold_block'];
     const note_block_base = ['oak_planks', 'spruce_planks', 'birch_planks', 'acacia_planks', 'dark_oak_planks', 'jungle_planks']; // cannot be bothered adding them all. Someone fork & commit
     const note_block_basedrum = ['stone', 'netherrack']; // likewise!
     const note_block_harp = ['air', 'note_block']; // we probably don't need to use this in the future and instead can blacklist blocks that cause other sounds
 
-    interface note_block_wrapper {
+    export interface note_block_wrapper {
         key: number,
         type: note_block_type,
         block: string,
