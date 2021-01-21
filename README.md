@@ -8,7 +8,7 @@
 <img src='https://img.shields.io/github/stars/Camezza/MC-Uta'>
 <img src='https://img.shields.io/github/license/Camezza/MC-Uta'>
 </p>
-<p align='center'><i>A plugin for mineflayer allowing for advanced interaction with note blocks.</i></p>
+<p align='center'><i>A mineflayer plugin allowing for advanced interaction with note blocks.</i></p>
 
 ---
 
