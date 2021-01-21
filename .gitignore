@@ -360,3 +360,4 @@ tsconfig.json
 .gitattributes
 .gitignore
 .DS_store
+cache/*
