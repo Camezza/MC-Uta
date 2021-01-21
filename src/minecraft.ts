@@ -1,6 +1,5 @@
 import * as mineflayer from 'mineflayer';
 import * as prismarine_block from 'prismarine-block';
-import { stringify } from 'querystring';
 import * as vec3 from 'vec3';
 import { midi } from './midi';
 const midi_plugin = new midi.plugin(true);
