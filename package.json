@@ -1,6 +1,6 @@
 {
   "name": "mc-uta",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A mineflayer plugin allowing for advanced interaction with note blocks.",
   "main": "./src/mc_uta.ts",
   "scripts": {
