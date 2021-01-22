@@ -439,8 +439,6 @@ export namespace mc_uta {
             let midi_key_range = this.midi_plugin.retreiveKeyRange(song);
             let note_block_key_range = this.retreiveNoteBlockKeyRange(midi_key_range);
             let required_types = this.retreiveRequiredTypes(note_blocks, note_block_key_range);
-            let verified_note_blocks = this.assignNoteBlockKeys(note_blocks, note_block_key_range);
-            let sorted_note_blocks = this.sortNoteBlocksByKeys(verified_note_blocks);
 
             // what to do when playing a note
             let play_event = (note: midi.note_wrapper, sorted_note_blocks: Record<number, note_block_wrapper>) => {
@@ -453,7 +451,7 @@ export namespace mc_uta {
 
                     // Unable to play note block (missing)
                     if (!success) {
-                        pause = terminate = true;
+                        terminate = pause = true;
                         this.log(`ERROR: Unable to play note block!`, 'playNoteBlockSong', true);
                         callback('error', 'unable to play note block');
                     }
@@ -485,6 +483,8 @@ export namespace mc_uta {
 
             // have enough note blocks for all required keys
             if (required_types.length < 1) {
+                let verified_note_blocks = this.assignNoteBlockKeys(note_blocks, note_block_key_range);
+                let sorted_note_blocks = this.sortNoteBlocksByKeys(verified_note_blocks);
 
                 // tune all note blocks
                 for (let i = 0, il = verified_note_blocks.length; i < il; i++) {
@@ -492,7 +492,7 @@ export namespace mc_uta {
 
                     // error has occured, unable to tune note block
                     if (note_block === null) {
-                        pause = terminate = true;
+                        terminate = pause = true;
                         this.log(`ERROR: Note block was unable to be tuned`, 'playNoteBlockSong', true);
                         callback('error', 'unable to tune note block');
                         break;
@@ -505,7 +505,7 @@ export namespace mc_uta {
 
             // Not enough note blocks for required song
             else {
-                pause = terminate = true;
+                terminate = pause = true;
                 this.log(`ERROR: Missing note blocks required to play song`, 'playNoteBlockSong', true);
                 callback('missing', required_types);
             }
