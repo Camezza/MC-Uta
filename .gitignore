@@ -354,9 +354,9 @@ MigrationBackup/
 
 # Custom
 package-lock.json
-tsconfig.json
 .git
 .gitattributes
 .gitignore
 .DS_store
 cache/*
+dist/*
