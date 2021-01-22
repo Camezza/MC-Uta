@@ -1,2 +1,2 @@
-export * from './mc_uta';
-export * from './midi';
+export { mc_uta } from './mc_uta';
+export { midi } from './midi';

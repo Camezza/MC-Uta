@@ -1,6 +1,7 @@
 import * as mineflayer from 'mineflayer';
 import * as prismarine_block from 'prismarine-block';
 import * as vec3 from 'vec3';
+import * as path from 'path';
 import { midi } from './midi';
 const midi_plugin = new midi.plugin(true);
 
@@ -420,7 +421,7 @@ export namespace mc_uta {
         // Plays a midi song using note blocks specified
         public async playNoteBlockSong(song_path: string, note_blocks: note_block_wrapper[], callback?: (reason: midi.pause_reason, song?: midi.song_wrapper) => void, pause?: midi.pause_reason) {
             pause = pause || 'none';
-            let song_folder_path = './cache';
+            let song_folder_path = path.join(__dirname, '..', 'cache');
             let song_name = 'cache';
 
             // Generate song data for midi
