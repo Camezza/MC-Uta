@@ -3,7 +3,7 @@ import * as fs from 'fs';
 
 export namespace midi {
 
-    export type pause_reason = 'none' | 'end' | 'error' | 'interrupt';
+    export type pause_reason = 'end' | 'error' | 'manual';
 
     export interface note_wrapper {
         key: number,
@@ -245,12 +245,10 @@ export namespace midi {
             return notes_used;
         }
 
-        public async playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, pause_event_callback?: (reason: pause_reason, song?: song_wrapper) => void, pause?: pause_reason) {
-            let noop = () => { };
-            let pause_event = pause_event_callback || noop;
+        public async playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, cb?: (reason: pause_reason, song?: song_wrapper) => void, pause?: boolean) {
+            let callback = cb || function () { };
             let playing_song = song;
             let sequences = playing_song.sequences;
-            pause = pause || 'none';
 
             // Cannot use for loop as it will all be executed at once.
             for (let i = 0, il = sequences.length; i < il; i++) {
@@ -261,35 +259,37 @@ export namespace midi {
                 this.log(`Loading sequence with ${sequence.ticks} ticks and ${sequence.tempo} bpm`, 'playSong');
 
                 // Repeats whenever a new note is to be played
-                while (note !== undefined && pause === 'none') {
-                    
+                while (note !== undefined) {
+
                     // Pause boolean has been set to true
-                    if (pause !== 'none') {
+                    if (pause) {
                         this.log(`Song '${song.title}' was paused`, 'playSong');
-                        pause_event(pause, playing_song);
+                        callback('manual', playing_song);
                         return; // terminate
                     }
 
-                    // Await 'note' value for length of difference timeout
-                    else {
-                        let last_note = note;
-
-                        // Wait for tick difference before returning a value
-                        let next_note = () => {
-                            return new Promise<note_wrapper | undefined>(
-                                (resolve) => {
-                                    setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (tempo * song.ppq)));
-                                }
-                            )
-                        }
-
-                        this.log(`Note '${note.key}' was played`, 'playSong');
-                        play_event_callback(note);
-                        note = await next_note();
+                    let last_note = note;
+                    let next_note = () => {
+                        return new Promise<note_wrapper | undefined>(
+                            (resolve) => {
+                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (tempo * song.ppq)));
+                            }
+                        )
                     }
+
+                    this.log(`Note '${note.key}' was played`, 'playSong');
+                    play_event_callback(note);
+                    note = await next_note();
                 }
             }
-            pause_event('end', song);
+
+            // Song was unsuccessful in playing
+            if (playing_song.sequences.length > 0) {
+                callback('error', playing_song);
+            }
+
+            // Song finished successfully
+            else callback('end', song);
         }
     }
 }

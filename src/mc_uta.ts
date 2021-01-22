@@ -7,6 +7,7 @@ const midi_plugin = new midi.plugin(true);
 
 export namespace mc_uta {
 
+    export type callback_reason = midi.pause_reason | 'missing';
     export type note_block_type = 'basedrum' | 'bass' | 'harp' | 'bell' | null;
     export type note_block_sound = 'block.note_block.basedrum' | 'block.note_block.bass' | 'block.note_block.harp' | 'block.note_block.bell';
 
@@ -419,10 +420,11 @@ export namespace mc_uta {
         }
 
         // Plays a midi song using note blocks specified
-        public async playNoteBlockSong(song_path: string, note_blocks: note_block_wrapper[], callback?: (reason: midi.pause_reason, song?: midi.song_wrapper) => void, pause?: midi.pause_reason) {
-            pause = pause || 'none';
+        public async playNoteBlockSong(song_path: string, note_blocks: note_block_wrapper[], cb?: (reason: callback_reason, value?: string | midi.song_wrapper | note_block_type[]) => void, pause?: boolean) {
+            let callback = cb || function () { };
             let song_folder_path = path.join(__dirname, '..', 'cache');
             let song_name = 'cache';
+            let terminate = false;
 
             // Generate song data for midi
             let data = midi_plugin.readMidiFile(song_path);
@@ -450,13 +452,35 @@ export namespace mc_uta {
 
                     // Unable to play note block (missing)
                     if (!success) {
-                        pause = 'error';
+                        pause = terminate = true;
                         this.log(`ERROR: Unable to play note block!`, 'playNoteBlockSong', true);
+                        callback('error', 'unable to play note block');
                     }
                 }
             }
 
-            console.log(required_types);
+            let midi_callback = (reason: midi.pause_reason, song?: midi.song_wrapper) => {
+
+                // Prevent executing callback twice after pausing manually
+                if (!terminate) {
+                    switch (reason) {
+                        case 'end':
+                            callback('end', song);
+                            break;
+
+                        case 'manual':
+                            callback('manual', song);
+                            break;
+
+                        case 'error':
+                            callback('error', 'error whilst parsing midi file');
+                            break;
+
+                        default:
+                            throw new Error('No reason specified for midi song termination');
+                    }
+                }
+            }
 
             // have enough note blocks for all required keys
             if (required_types.length < 1) {
@@ -467,21 +491,23 @@ export namespace mc_uta {
 
                     // error has occured, unable to tune note block
                     if (note_block === null) {
-                        pause = 'error';
+                        pause = terminate = true;
                         this.log(`ERROR: Note block was unable to be tuned`, 'playNoteBlockSong', true);
-                        i = il;
+                        callback('error', 'unable to tune note block');
+                        break;
                     }
                 }
+
+                // play the song
+                midi_plugin.playSong(song, (note) => play_event(note, sorted_note_blocks), midi_callback, pause);
             }
 
             // Not enough note blocks for required song
             else {
-                pause = 'error';
+                pause = terminate = true;
                 this.log(`ERROR: Missing note blocks required to play song`, 'playNoteBlockSong', true);
+                callback('missing', required_types);
             }
-
-            // play the song
-            midi_plugin.playSong(song, (note) => play_event(note, sorted_note_blocks), callback, pause);
         }
 
         public test(song: midi.song_wrapper) {
