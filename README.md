@@ -11,4 +11,21 @@
 <p align='center'><i>A mineflayer plugin allowing for advanced interaction with note blocks.</i></p>
 
 ---
+## Installation
+This plugin requires npm to install:<br>
+`npm install -g mc-uta`
 
+## Usage
+ES6:<br>
+```
+import { mc_uta } from 'mc-uta';
+
+let bot = mineflayer.createbot({
+username: "bot",
+host: "localhost",
+port: 25565,
+version: "1.16.4",
+});
+
+let uta = mc_uta.plugin(bot);
+```
