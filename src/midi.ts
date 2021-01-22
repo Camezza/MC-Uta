@@ -79,7 +79,9 @@ export namespace midi {
             return note;
         }
 
-        // Generates the contents of a storable json file used to read songss
+        // Generates the contents of a storable json file used to read songs
+        // This is probably the biggest bottleneck in performance
+        // ToDo: make this more efficicent
         private generateNotes(midi: Midi): note_wrapper[] {
             let tracks = midi.tracks;
             let notes: note_wrapper[] = [];

@@ -3,7 +3,6 @@ import * as prismarine_block from 'prismarine-block';
 import * as vec3 from 'vec3';
 import * as path from 'path';
 import { midi } from './midi';
-const midi_plugin = new midi.plugin(true);
 
 export namespace mc_uta {
 
@@ -32,10 +31,12 @@ export namespace mc_uta {
     export class plugin {
         private bot: mineflayer.Bot;
         private debug: boolean;
+        private midi_plugin: midi.plugin;
 
         constructor(bot: mineflayer.Bot, debug?: boolean) {
             this.bot = bot;
             this.debug = debug || false;
+            this.midi_plugin = new midi.plugin(this.debug);
         }
 
         // Logs detailed messages to the console if debugging is enabled
@@ -427,15 +428,15 @@ export namespace mc_uta {
             let terminate = false;
 
             // Generate song data for midi
-            let data = midi_plugin.readMidiFile(song_path);
-            let file = midi_plugin.generateSongFile(data, song_folder_path, song_name, data.name);
-            let song = midi_plugin.retreiveSongData(`${song_folder_path}/${song_name}.json`);
+            let data = this.midi_plugin.readMidiFile(song_path);
+            let file = this.midi_plugin.generateSongFile(data, song_folder_path, song_name, data.name);
+            let song = this.midi_plugin.retreiveSongData(`${song_folder_path}/${song_name}.json`);
 
             // Gather nearby note blocks
             // not currently needed as we specify through note_blocks parameter
 
             // Verify that we have the required note blocks to play
-            let midi_key_range = midi_plugin.retreiveKeyRange(song);
+            let midi_key_range = this.midi_plugin.retreiveKeyRange(song);
             let note_block_key_range = this.retreiveNoteBlockKeyRange(midi_key_range);
             let required_types = this.retreiveRequiredTypes(note_blocks, note_block_key_range);
             let verified_note_blocks = this.assignNoteBlockKeys(note_blocks, note_block_key_range);
@@ -473,7 +474,7 @@ export namespace mc_uta {
                             break;
 
                         case 'error':
-                            callback('error', 'error whilst parsing midi file');
+                            callback('error', 'error whilst parsing midi json file');
                             break;
 
                         default:
@@ -499,7 +500,7 @@ export namespace mc_uta {
                 }
 
                 // play the song
-                midi_plugin.playSong(song, (note) => play_event(note, sorted_note_blocks), midi_callback, pause);
+                this.midi_plugin.playSong(song, (note) => play_event(note, sorted_note_blocks), midi_callback, pause);
             }
 
             // Not enough note blocks for required song
@@ -518,7 +519,7 @@ export namespace mc_uta {
                     this.bot.chat(`/playsound minecraft:${sound} ambient @a ~ ~ ~ 10 ${pitch}`);
                 }
             }
-            midi_plugin.playSong(song, note_handler);
+            this.midi_plugin.playSong(song, note_handler);
         }
 
     }
