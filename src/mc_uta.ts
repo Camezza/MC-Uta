@@ -142,7 +142,7 @@ export namespace mc_uta {
             return relative_key;
         }
 
-        public generateNoteBlockWrapper(key: number, type: note_block_type, block: string, position: vec3.Vec3): note_block_wrapper {
+        private generateNoteBlockWrapper(key: number, type: note_block_type, block: string, position: vec3.Vec3): note_block_wrapper {
             let note_block: note_block_wrapper = {
                 key: key,
                 type: type,
@@ -381,7 +381,7 @@ export namespace mc_uta {
         }
 
         // TODO: Fix this spaghetti mess
-        public async tuneNoteBlock(note_block: note_block_wrapper): Promise<note_block_wrapper | null> {
+        private async tuneNoteBlock(note_block: note_block_wrapper): Promise<note_block_wrapper | null> {
             return new Promise<note_block_wrapper | null>((resolve) => {
                 let position = note_block.position;
 
@@ -438,16 +438,27 @@ export namespace mc_uta {
         // Plays a midi song using note blocks specified
 
         // ToDo: Pausing won't work by using a boolean as a parameter. Instead specify void that returns a boolean
-        public async playNoteBlockSong(song_path: string, note_blocks: note_block_wrapper[], cb?: (reason: callback_reason, value?: string | midi.song_wrapper | note_block_type[]) => void, pause?: boolean) {
+        public async playNoteBlockSong(song_path: string | midi.song_wrapper, note_blocks: note_block_wrapper[], cb?: (reason: callback_reason, value?: string | midi.song_wrapper | note_block_type[]) => void, pause?: boolean) {
             let callback = cb || function () { };
             let song_folder_path = path.join(__dirname, '..', 'cache');
             let song_name = 'cache';
             let terminate = false;
+            let data, file, song: midi.song_wrapper;
 
-            // Generate song data for midi
-            let data = this.midi_plugin.readMidiFile(song_path);
-            let file = this.midi_plugin.generateSongFile(data, song_folder_path, song_name, data.name);
-            let song = this.midi_plugin.retreiveSongData(`${song_folder_path}/${song_name}.json`);
+            // Generate song data for midi file
+            if (typeof song_path === 'string') {
+                data = this.midi_plugin.readMidiFile(song_path);
+                file = this.midi_plugin.generateSongFile(data, song_folder_path, song_name, data.name);
+                song = this.midi_plugin.retreiveSongData(`${song_folder_path}/${song_name}.json`);
+            }
+
+            // Play existing saved song
+            else if (typeof song_path === 'object') {
+                song = song_path;
+            }
+
+            // didn't specify midi path or song wrapper
+            else throw new Error(`Invalid data specified for parameter 'song_path'`);
 
             // Gather nearby note blocks
             // not currently needed as we specify through note_blocks parameter
@@ -506,7 +517,6 @@ export namespace mc_uta {
                 // tune all note blocks
                 for (let i = 0, il = verified_note_blocks.length; i < il; i++) {
                     let note_block = await this.tuneNoteBlock(verified_note_blocks[i]);
-                    console.log(note_block);
 
                     // error has occured, unable to tune note block
                     if (note_block === null) {

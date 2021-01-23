@@ -283,17 +283,15 @@ export namespace midi {
                     play_event_callback(note);
                     note = await next_note();
                 }
-            }
 
-            // Song was unsuccessful in playing
-            // ERROR: Sequences are not removed, so this will always callback with an error.
-            // ToDo: Find a different way of detecting that the song has ended/errors have occured
-            if (playing_song.sequences.length > 0) {
-                callback('error', playing_song);
+                // Song was unsuccessful in playing (Notes are still remaining)
+                if (notes.length < sequence.notes.length) {
+                    callback('error', playing_song);
+                }
             }
 
             // Song finished successfully
-            else callback('end', song);
+            callback('end', song);
         }
     }
 }
