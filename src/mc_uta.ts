@@ -209,35 +209,50 @@ export namespace mc_uta {
         }
 
         // Plays a note block. Returns true if it was successful and false if it was insuccessful.
-        private playNoteBlock(note_block: note_block_wrapper): boolean {
-            let position = note_block.position;
-            let block = this.bot.blockAt(position);
+        private async playNoteBlock(note_block: note_block_wrapper): Promise<boolean> {
+            return new Promise<boolean>((resolve) => {
+                let position = note_block.position;
+                let block = this.bot.blockAt(position);
 
-            // note block exists
-            if (block?.name === 'note_block') {
-                this.bot._client.write('block_dig', {
-                    status: 0,
-                    location: position,
-                    face: 1 // play note block from the top
-                });
-                return true;
-            }
+                // note block exists
+                if (block?.name === 'note_block') {
+                    this.bot.lookAt(block.position.offset(0.5, 0.5, 0.5), false);
+                    this.bot._client.write('block_dig', {
+                        status: 0,
+                        location: position,
+                        face: 1 // play note block from the top
+                    });
+                    this.bot.swingArm();
+                    resolve(true);
+                }
 
-            else return false;
+                else resolve(false);
+            })
         }
 
         // Increments a note block's pitch by right-clicking it. Returns true if it was successful, and false if it was insuccessful.
-        private incrementNoteBlock(note_block: note_block_wrapper): boolean {
-            let position = note_block.position;
-            let block = this.bot.blockAt(position);
+        private async incrementNoteBlock(note_block: note_block_wrapper): Promise<boolean> {
+            return new Promise<boolean>((resolve) => {
+                let position = note_block.position;
+                let block = this.bot.blockAt(position);
 
-            // note block exists
-            if (block?.name === 'note_block') {
-                this.bot.activateBlock(block);
-                return true;
-            }
+                // note block exists
+                if (block?.name === 'note_block') {
+                    this.bot.lookAt(block.position.offset(0.5, 0.5, 0.5), false);
+                    this.bot._client.write('block_place', {
+                        location: block.position,
+                        direction: 1,
+                        hand: 0,
+                        cursorX: 0.5,
+                        cursorY: 0.5,
+                        cursorZ: 0.5,
+                    });
+                    this.bot.swingArm();
+                    resolve(true);
+                }
 
-            else return false;
+                else resolve(false);
+            });
         }
 
         // get number of available keys
@@ -421,6 +436,8 @@ export namespace mc_uta {
         }
 
         // Plays a midi song using note blocks specified
+
+        // ToDo: Pausing won't work by using a boolean as a parameter. Instead specify void that returns a boolean
         public async playNoteBlockSong(song_path: string, note_blocks: note_block_wrapper[], cb?: (reason: callback_reason, value?: string | midi.song_wrapper | note_block_type[]) => void, pause?: boolean) {
             let callback = cb || function () { };
             let song_folder_path = path.join(__dirname, '..', 'cache');
@@ -511,17 +528,5 @@ export namespace mc_uta {
                 callback('missing', required_types);
             }
         }
-
-        public test(song: midi.song_wrapper) {
-            let note_handler = (note: midi.note_wrapper) => {
-                if (note.key < 103 && note.key > 21) {
-                    let pitch = this.retreiveNoteBlockPitch(note.key);
-                    let sound = this.retreiveNoteBlockSound(this.retreiveKeyType(note.key));
-                    this.bot.chat(`/playsound minecraft:${sound} ambient @a ~ ~ ~ 10 ${pitch}`);
-                }
-            }
-            this.midi_plugin.playSong(song, note_handler);
-        }
-
     }
 }

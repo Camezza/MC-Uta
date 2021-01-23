@@ -286,6 +286,8 @@ export namespace midi {
             }
 
             // Song was unsuccessful in playing
+            // ERROR: Sequences are not removed, so this will always callback with an error.
+            // ToDo: Find a different way of detecting that the song has ended/errors have occured
             if (playing_song.sequences.length > 0) {
                 callback('error', playing_song);
             }
