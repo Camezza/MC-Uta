@@ -247,9 +247,14 @@ export namespace midi {
             return notes_used;
         }
 
-        public async playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, cb?: (reason: pause_reason, song?: song_wrapper) => void, pause?: boolean) {
+        public async playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, cb?: (reason: pause_reason, song: song_wrapper) => void, pause?: boolean) {
             let callback = cb || function () { };
-            let playing_song = song;
+
+            // ERROR: This isn't creating a new instance for some stupid reason
+            // ToDo: Fix this
+            let playing_song: song_wrapper = Object.create(song);
+
+
             let sequences = playing_song.sequences;
 
             // Cannot use for loop as it will all be executed at once.

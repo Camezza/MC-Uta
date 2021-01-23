@@ -153,108 +153,6 @@ export namespace mc_uta {
             return note_block;
         }
 
-        // Gets nearby note blocks and assigns them to wrappers
-        public retreiveNearbyNoteBlocks(): note_block_wrapper[] {
-            let note_blocks: note_block_wrapper[] = [];
-            let for_each_axis = (radius: number, method: (index: number) => void) => {
-                let diameter = radius * 2;
-                for (let i = -(diameter / 2), il = diameter / 2; i <= il; i++) {
-                    method(i);
-                }
-            }
-
-            for_each_axis(4, (x) =>
-                for_each_axis(4, (y) =>
-                    for_each_axis(4, (z) => {
-                        let position = this.bot.entity.position.floor();
-                        let block_position = position.offset(x, y, z);
-                        //this.log(`Checking block at position (${block_position.x}, ${block_position.y}, ${block_position.z})`, 'retreiveNearbyNoteBlocks'); // spammy!
-
-                        // Note block at position
-                        if (this.bot.blockAt(block_position)?.name === 'note_block') {
-                            let tone_block_position = block_position.offset(0, -1, 0);
-                            let above_block_position = block_position.offset(0, 1, 0);
-                            let tone_block_type = this.bot.blockAt(tone_block_position)?.name;
-                            let above_block_type = this.bot.blockAt(above_block_position)?.name;
-
-                            // Tone block below exists & air above note block
-                            if (tone_block_type !== undefined && above_block_type === 'air') {
-                                let note_block: note_block_wrapper;
-
-                                // Bell
-                                if (note_block_bell.includes(tone_block_type)) {
-                                    note_block = this.generateNoteBlockWrapper(-1, 'bell', tone_block_type, block_position);
-                                }
-
-                                // bass
-                                else if (note_block_base.includes(tone_block_type)) {
-                                    note_block = this.generateNoteBlockWrapper(-1, 'bass', tone_block_type, block_position);
-                                }
-
-                                // basedrum
-                                else if (note_block_basedrum.includes(tone_block_type)) {
-                                    note_block = this.generateNoteBlockWrapper(-1, 'basedrum', tone_block_type, block_position);
-                                }
-
-                                // Harp
-                                else {
-                                    note_block = this.generateNoteBlockWrapper(-1, 'harp', tone_block_type, block_position);
-                                }
-
-                                note_blocks.push(note_block);
-                            }
-                        }
-                    })));
-            return note_blocks;
-        }
-
-        // Plays a note block. Returns true if it was successful and false if it was insuccessful.
-        private async playNoteBlock(note_block: note_block_wrapper): Promise<boolean> {
-            return new Promise<boolean>((resolve) => {
-                let position = note_block.position;
-                let block = this.bot.blockAt(position);
-
-                // note block exists
-                if (block?.name === 'note_block') {
-                    this.bot.lookAt(block.position.offset(0.5, 0.5, 0.5), false);
-                    this.bot._client.write('block_dig', {
-                        status: 0,
-                        location: position,
-                        face: 1 // play note block from the top
-                    });
-                    this.bot.swingArm();
-                    resolve(true);
-                }
-
-                else resolve(false);
-            })
-        }
-
-        // Increments a note block's pitch by right-clicking it. Returns true if it was successful, and false if it was insuccessful.
-        private async incrementNoteBlock(note_block: note_block_wrapper): Promise<boolean> {
-            return new Promise<boolean>((resolve) => {
-                let position = note_block.position;
-                let block = this.bot.blockAt(position);
-
-                // note block exists
-                if (block?.name === 'note_block') {
-                    this.bot.lookAt(block.position.offset(0.5, 0.5, 0.5), false);
-                    this.bot._client.write('block_place', {
-                        location: block.position,
-                        direction: 1,
-                        hand: 0,
-                        cursorX: 0.5,
-                        cursorY: 0.5,
-                        cursorZ: 0.5,
-                    });
-                    this.bot.swingArm();
-                    resolve(true);
-                }
-
-                else resolve(false);
-            });
-        }
-
         // get number of available keys
         private retreiveRequiredTypes(note_blocks: note_block_wrapper[], key_range: number[]): note_block_type[] {
             let note_types: note_block_type[] = ['basedrum', 'bass', 'harp', 'bell'];
@@ -380,6 +278,53 @@ export namespace mc_uta {
             return assigned_note_blocks;
         }
 
+        // Plays a note block. Returns true if it was successful and false if it was insuccessful.
+        private async playNoteBlock(note_block: note_block_wrapper): Promise<boolean> {
+            return new Promise<boolean>((resolve) => {
+                let position = note_block.position;
+                let block = this.bot.blockAt(position);
+
+                // note block exists
+                if (block?.name === 'note_block') {
+                    this.bot.lookAt(block.position.offset(0.5, 0.5, 0.5), false);
+                    this.bot._client.write('block_dig', {
+                        status: 0,
+                        location: position,
+                        face: 1 // play note block from the top
+                    });
+                    this.bot.swingArm();
+                    resolve(true);
+                }
+
+                else resolve(false);
+            })
+        }
+
+        // Increments a note block's pitch by right-clicking it. Returns true if it was successful, and false if it was insuccessful.
+        private async incrementNoteBlock(note_block: note_block_wrapper): Promise<boolean> {
+            return new Promise<boolean>((resolve) => {
+                let position = note_block.position;
+                let block = this.bot.blockAt(position);
+
+                // note block exists
+                if (block?.name === 'note_block') {
+                    this.bot.lookAt(block.position.offset(0.5, 0.5, 0.5), false);
+                    this.bot._client.write('block_place', {
+                        location: block.position,
+                        direction: 1,
+                        hand: 0,
+                        cursorX: 0.5,
+                        cursorY: 0.5,
+                        cursorZ: 0.5,
+                    });
+                    this.bot.swingArm();
+                    resolve(true);
+                }
+
+                else resolve(false);
+            });
+        }
+
         // TODO: Fix this spaghetti mess
         private async tuneNoteBlock(note_block: note_block_wrapper): Promise<note_block_wrapper | null> {
             return new Promise<note_block_wrapper | null>((resolve) => {
@@ -435,10 +380,65 @@ export namespace mc_uta {
             });
         }
 
+        // Gets nearby note blocks and assigns them to wrappers
+        public retreiveNearbyNoteBlocks(): note_block_wrapper[] {
+            let note_blocks: note_block_wrapper[] = [];
+            let for_each_axis = (radius: number, method: (index: number) => void) => {
+                let diameter = radius * 2;
+                for (let i = -(diameter / 2), il = diameter / 2; i <= il; i++) {
+                    method(i);
+                }
+            }
+
+            for_each_axis(4, (x) =>
+                for_each_axis(4, (y) =>
+                    for_each_axis(4, (z) => {
+                        let position = this.bot.entity.position.floor();
+                        let block_position = position.offset(x, y, z);
+                        //this.log(`Checking block at position (${block_position.x}, ${block_position.y}, ${block_position.z})`, 'retreiveNearbyNoteBlocks'); // spammy!
+
+                        // Note block at position
+                        if (this.bot.blockAt(block_position)?.name === 'note_block') {
+                            let tone_block_position = block_position.offset(0, -1, 0);
+                            let above_block_position = block_position.offset(0, 1, 0);
+                            let tone_block_type = this.bot.blockAt(tone_block_position)?.name;
+                            let above_block_type = this.bot.blockAt(above_block_position)?.name;
+
+                            // Tone block below exists & air above note block
+                            if (tone_block_type !== undefined && above_block_type === 'air') {
+                                let note_block: note_block_wrapper;
+
+                                // Bell
+                                if (note_block_bell.includes(tone_block_type)) {
+                                    note_block = this.generateNoteBlockWrapper(-1, 'bell', tone_block_type, block_position);
+                                }
+
+                                // bass
+                                else if (note_block_base.includes(tone_block_type)) {
+                                    note_block = this.generateNoteBlockWrapper(-1, 'bass', tone_block_type, block_position);
+                                }
+
+                                // basedrum
+                                else if (note_block_basedrum.includes(tone_block_type)) {
+                                    note_block = this.generateNoteBlockWrapper(-1, 'basedrum', tone_block_type, block_position);
+                                }
+
+                                // Harp
+                                else {
+                                    note_block = this.generateNoteBlockWrapper(-1, 'harp', tone_block_type, block_position);
+                                }
+
+                                note_blocks.push(note_block);
+                            }
+                        }
+                    })));
+            return note_blocks;
+        }
+
         // Plays a midi song using note blocks specified
 
         // ToDo: Pausing won't work by using a boolean as a parameter. Instead specify void that returns a boolean
-        public async playNoteBlockSong(song_path: string | midi.song_wrapper, note_blocks: note_block_wrapper[], cb?: (reason: callback_reason, value?: string | midi.song_wrapper | note_block_type[]) => void, pause?: boolean) {
+        public async playNoteBlockSong(song_path: string | midi.song_wrapper, note_blocks: note_block_wrapper[], cb?: (reason: callback_reason, value: string | midi.song_wrapper | note_block_type[]) => void, pause?: boolean) {
             let callback = cb || function () { };
             let song_folder_path = path.join(__dirname, '..', 'cache');
             let song_name = 'cache';
@@ -486,7 +486,7 @@ export namespace mc_uta {
                 }
             }
 
-            let midi_callback = (reason: midi.pause_reason, song?: midi.song_wrapper) => {
+            let midi_callback = (reason: midi.pause_reason, song: midi.song_wrapper) => {
 
                 // Prevent executing callback twice after pausing manually
                 if (!terminate) {
