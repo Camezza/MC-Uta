@@ -163,9 +163,9 @@ export namespace mc_uta {
                 }
             }
 
-            for_each_axis(5, (x) =>
-                for_each_axis(5, (y) =>
-                    for_each_axis(5, (z) => {
+            for_each_axis(4, (x) =>
+                for_each_axis(4, (y) =>
+                    for_each_axis(4, (z) => {
                         let position = this.bot.entity.position.floor();
                         let block_position = position.offset(x, y, z);
                         //this.log(`Checking block at position (${block_position.x}, ${block_position.y}, ${block_position.z})`, 'retreiveNearbyNoteBlocks'); // spammy!
@@ -489,6 +489,7 @@ export namespace mc_uta {
                 // tune all note blocks
                 for (let i = 0, il = verified_note_blocks.length; i < il; i++) {
                     let note_block = await this.tuneNoteBlock(verified_note_blocks[i]);
+                    console.log(note_block);
 
                     // error has occured, unable to tune note block
                     if (note_block === null) {
