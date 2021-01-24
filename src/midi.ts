@@ -214,13 +214,13 @@ export namespace midi {
         // Gets sequences from song data
         public retreiveSequences(song: song_wrapper) {
             this.log(`Retreived ${song.sequences.length} sequences from song '${song.title}'.`, 'retreiveSequences');
-            return song.sequences;
+            return new Array().concat(song.sequences);
         }
 
         // Gets notes from sequence
         public retreiveNotes(sequence: sequence_wrapper) {
             this.log(`Retreived ${sequence.notes.length} notes from sequence at ${sequence.ticks} ticks.`, 'retreiveNotes');
-            return sequence.notes;
+            return new Array().concat(sequence.notes);
         }
 
         // Gets an array of keys that are used in a song
@@ -248,19 +248,15 @@ export namespace midi {
         }
 
         public async playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, cb?: (reason: pause_reason, song: song_wrapper) => void, get_pause?: () => boolean) {
-            const original_song = song; // declare const to prevent changing original object
             let pause = get_pause || function() {return false}
             let callback = cb || function () { };
-            let playing_song: song_wrapper = original_song;
-
-
-            let sequences = playing_song.sequences;
+            let sequences = this.retreiveSequences(song);
 
             // Cannot use for loop as it will all be executed at once.
             for (let i = 0, il = sequences.length; i < il; i++) {
                 let sequence = sequences[i];
                 let tempo = sequence.tempo;
-                let notes = sequence.notes;
+                let notes = this.retreiveNotes(sequence);
                 let note = notes.shift();
                 this.log(`Loading sequence with ${sequence.ticks} ticks and ${sequence.tempo} bpm`, 'playSong');
 
@@ -269,8 +265,8 @@ export namespace midi {
 
                     // Pause boolean has been set to true
                     if (pause()) {
-                        this.log(`Song '${original_song.title}' was paused`, 'playSong');
-                        callback('manual', playing_song);
+                        this.log(`Song '${song.title}' was paused`, 'playSong');
+                        callback('manual', this.generateSongWrapper(song.title, song.ppq, sequences));
                         return; // terminate
                     }
 
@@ -278,7 +274,7 @@ export namespace midi {
                     let next_note = () => {
                         return new Promise<note_wrapper | undefined>(
                             (resolve) => {
-                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (tempo * original_song.ppq)));
+                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (tempo * song.ppq)));
                             }
                         )
                     }
@@ -290,12 +286,12 @@ export namespace midi {
 
                 // Song was unsuccessful in playing (Notes are still remaining)
                 if (notes.length < sequence.notes.length) {
-                    callback('error', playing_song);
+                    callback('error', this.generateSongWrapper(song.title, song.ppq, sequences));
                 }
             }
 
             // Song finished successfully
-            callback('end', original_song);
+            callback('end', song);
         }
     }
 }
