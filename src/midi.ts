@@ -247,12 +247,11 @@ export namespace midi {
             return notes_used;
         }
 
-        public async playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, cb?: (reason: pause_reason, song: song_wrapper) => void, pause?: boolean) {
+        public async playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, cb?: (reason: pause_reason, song: song_wrapper) => void, get_pause?: () => boolean) {
+            const original_song = song; // declare const to prevent changing original object
+            let pause = get_pause || function() {return false}
             let callback = cb || function () { };
-
-            // ERROR: This isn't creating a new instance for some stupid reason
-            // ToDo: Fix this
-            let playing_song: song_wrapper = Object.create(song);
+            let playing_song: song_wrapper = original_song;
 
 
             let sequences = playing_song.sequences;
@@ -269,8 +268,8 @@ export namespace midi {
                 while (note !== undefined) {
 
                     // Pause boolean has been set to true
-                    if (pause) {
-                        this.log(`Song '${song.title}' was paused`, 'playSong');
+                    if (pause()) {
+                        this.log(`Song '${original_song.title}' was paused`, 'playSong');
                         callback('manual', playing_song);
                         return; // terminate
                     }
@@ -279,7 +278,7 @@ export namespace midi {
                     let next_note = () => {
                         return new Promise<note_wrapper | undefined>(
                             (resolve) => {
-                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (tempo * song.ppq)));
+                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (tempo * original_song.ppq)));
                             }
                         )
                     }
@@ -296,7 +295,7 @@ export namespace midi {
             }
 
             // Song finished successfully
-            callback('end', song);
+            callback('end', original_song);
         }
     }
 }

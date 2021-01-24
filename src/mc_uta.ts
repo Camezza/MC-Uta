@@ -438,7 +438,7 @@ export namespace mc_uta {
         // Plays a midi song using note blocks specified
 
         // ToDo: Pausing won't work by using a boolean as a parameter. Instead specify void that returns a boolean
-        public async playNoteBlockSong(song_path: string | midi.song_wrapper, note_blocks: note_block_wrapper[], cb?: (reason: callback_reason, value: string | midi.song_wrapper | note_block_type[]) => void, pause?: boolean) {
+        public async playNoteBlockSong(song_path: string | midi.song_wrapper, note_blocks: note_block_wrapper[], cb?: (reason: callback_reason, value: string | midi.song_wrapper | note_block_type[]) => void, get_pause?: () => boolean) {
             let callback = cb || function () { };
             let song_folder_path = path.join(__dirname, '..', 'cache');
             let song_name = 'cache';
@@ -479,7 +479,7 @@ export namespace mc_uta {
 
                     // Unable to play note block (missing)
                     if (!success) {
-                        terminate = pause = true;
+                        terminate = true;
                         this.log(`ERROR: Unable to play note block!`, 'playNoteBlockSong', true);
                         callback('error', 'unable to play note block');
                     }
@@ -520,7 +520,7 @@ export namespace mc_uta {
 
                     // error has occured, unable to tune note block
                     if (note_block === null) {
-                        terminate = pause = true;
+                        terminate = true;
                         this.log(`ERROR: Note block was unable to be tuned`, 'playNoteBlockSong', true);
                         callback('error', 'unable to tune note block');
                         break;
@@ -528,12 +528,12 @@ export namespace mc_uta {
                 }
 
                 // play the song
-                this.midi_plugin.playSong(song, (note) => play_event(note, sorted_note_blocks), midi_callback, pause);
+                this.midi_plugin.playSong(song, (note) => play_event(note, sorted_note_blocks), midi_callback, get_pause);
             }
 
             // Not enough note blocks for required song
             else {
-                terminate = pause = true;
+                terminate = true;
                 this.log(`ERROR: Missing note blocks required to play song`, 'playNoteBlockSong', true);
                 callback('missing', required_types);
             }
