@@ -192,23 +192,10 @@ export namespace midi {
             return midi;
         }
 
-        // Gets sequences from song data
-        public retreiveSequences(song_object: song) {
-            this.log(`Retreived ${song_object.retreiveSequences().length} sequences from song '${song_object.title}'.`, 'retreiveSequences');
-            return new Array().concat(song_object.retreiveSequences());
-        }
-
-        // Gets notes from sequence_object
-        public retreiveNotes(sequence_object: sequence) {
-            this.log(`Retreived ${sequence_object.notes.length} notes from sequence at ${sequence_object.ticks} ticks.`, 'retreiveNotes');
-            return new Array().concat(sequence_object.notes);
-        }
-
         // Gets an array of keys that are used in a song
         public retreiveKeyRange(song_object: song): number[] {
             let notes: note[] = [];
             let notes_used: number[] = [];
-            console.log(song_object);
             let sequences = song_object.retreiveSequences();
 
             // Grab all notes from the song
@@ -232,13 +219,13 @@ export namespace midi {
         public async playSong(song_object: song, play_event_callback: (note_object: note) => void, cb?: (reason: pause_reason, song_object: song) => void, get_pause?: () => boolean) {
             let pause = get_pause || function () { return false }
             let callback = cb || function () { };
-            let sequences = this.retreiveSequences(song_object);
+            let sequences = song_object.retreiveSequences();
 
             // Cannot use for loop as it will all be executed at once.
             for (let i = 0, il = sequences.length; i < il; i++) {
                 let sequence_object = sequences[i];
                 let tempo = sequence_object.tempo;
-                let notes = this.retreiveNotes(sequence_object);
+                let notes = sequence_object.retreiveNotes();
                 let note_object = notes.shift();
                 this.log(`Loading sequence with ${sequence_object.ticks} ticks and ${sequence_object.tempo} bpm`, 'playSong');
 

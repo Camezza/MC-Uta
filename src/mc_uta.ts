@@ -487,6 +487,8 @@ export namespace mc_uta {
 
                 // Prevent executing callback twice after pausing manually
                 if (!terminate) {
+                    terminate = true;
+                    
                     switch (reason) {
                         case 'end':
                             callback('end', song);
