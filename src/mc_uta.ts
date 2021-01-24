@@ -438,18 +438,15 @@ export namespace mc_uta {
         // Plays a midi song using note blocks specified
 
         // ToDo: Pausing won't work by using a boolean as a parameter. Instead specify void that returns a boolean
-        public async playNoteBlockSong(song_path: string | midi.song_wrapper, note_blocks: note_block_wrapper[], cb?: (reason: callback_reason, value: string | midi.song_wrapper | note_block_type[]) => void, get_pause?: () => boolean) {
+        public async playNoteBlockSong(song_path: string | midi.song, note_blocks: note_block_wrapper[], cb?: (reason: callback_reason, value: string | midi.song | note_block_type[]) => void, get_pause?: () => boolean) {
             let callback = cb || function () { };
-            let song_folder_path = path.join(__dirname, '..', 'cache');
-            let song_name = 'cache';
             let terminate = false;
-            let data, file, song: midi.song_wrapper;
+            let song: midi.song;
 
             // Generate song data for midi file
             if (typeof song_path === 'string') {
-                data = this.midi_plugin.readMidiFile(song_path);
-                file = this.midi_plugin.generateSongFile(data, song_folder_path, song_name, data.name);
-                song = this.midi_plugin.retreiveSongData(`${song_folder_path}/${song_name}.json`);
+                let data = this.midi_plugin.readMidiFile(song_path);
+                song = this.midi_plugin.generateSongData(data, data.name);
             }
 
             // Play existing saved song
@@ -469,7 +466,7 @@ export namespace mc_uta {
             let required_types = this.retreiveRequiredTypes(note_blocks, note_block_key_range);
 
             // what to do when playing a note
-            let play_event = (note: midi.note_wrapper, sorted_note_blocks: Record<number, note_block_wrapper>) => {
+            let play_event = (note: midi.note, sorted_note_blocks: Record<number, note_block_wrapper>) => {
                 let key = note.key;
                 let note_block = sorted_note_blocks[key];
 
@@ -486,7 +483,7 @@ export namespace mc_uta {
                 }
             }
 
-            let midi_callback = (reason: midi.pause_reason, song: midi.song_wrapper) => {
+            let midi_callback = (reason: midi.pause_reason, song: midi.song) => {
 
                 // Prevent executing callback twice after pausing manually
                 if (!terminate) {

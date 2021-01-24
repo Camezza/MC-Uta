@@ -5,22 +5,57 @@ export namespace midi {
 
     export type pause_reason = 'end' | 'error' | 'manual';
 
-    export interface note_wrapper {
-        key: number,
-        ticks: number,
-        difference: number,
+    export class note {
+        public key: number;
+        public ticks: number;
+        public difference: number;
+
+        constructor(key: number, ticks: number, difference: number) {
+            this.key = key;
+            this.ticks = ticks;
+            this.difference = difference;
+        }
     }
 
-    export interface sequence_wrapper {
-        tempo: number,
-        ticks: number,
-        notes: note_wrapper[],
+    export class sequence {
+        public tempo: number;
+        public ticks: number;
+        public notes: note[];
+
+        constructor(tempo: number, ticks: number, notes?: note[]) {
+            this.tempo = tempo;
+            this.ticks = ticks;
+            this.notes = notes || [];
+        }
+
+        public retreiveNotes(): note[] {
+            return [...this.notes];
+        }
+
+        public setNotes(notes: note[]) {
+            this.notes = [...notes];
+        }
     }
 
-    export interface song_wrapper {
-        title: string,
-        ppq: number,
-        sequences: sequence_wrapper[],
+    export class song {
+        public title: string;
+        public ppq: number;
+        private sequences: sequence[];
+
+        // Generates an object that holds sequences of a midi files
+        constructor(title: string, ppq: number, sequences?: sequence[]) {
+            this.title = title;
+            this.ppq = ppq;
+            this.sequences = sequences || [];
+        }
+
+        public retreiveSequences(): sequence[] {
+            return [...this.sequences];
+        }
+
+        public setSequences(sequences: sequence[]) {
+            this.sequences = sequences;
+        }
     }
 
     export class plugin {
@@ -41,50 +76,12 @@ export namespace midi {
             }
         }
 
-        // Generates an object that holds sequences of a midi files
-        private generateSongWrapper(title: string, ppq: number, sequences?: sequence_wrapper[]): song_wrapper {
-            sequences = sequences || [];
-            let song: song_wrapper = {
-                title: title,
-                ppq: ppq,
-                sequences: sequences,
-            }
-
-            this.log(`Generated song wrapper with title '${title}'.`, 'generateSongWrapper');
-            return song;
-        }
-
-        // Generates a sequence which contains the tempo, signature & notes for a particular part of the song.
-        private generateSequenceWrapper(tempo: number, ticks: number, notes?: note_wrapper[]): sequence_wrapper {
-            notes = notes || [];
-            let sequence: sequence_wrapper = {
-                tempo: tempo,
-                ticks: ticks,
-                notes: notes,
-            };
-
-            this.log(`Generated sequence wrapper with tempo ${tempo} & ${ticks} ticks.`, 'generateSequenceWrapper');
-            return sequence;
-        }
-
-        // Generates a note which contains the key, ticks passed & difference in ticks until the next note is played.
-        private generateNoteWrapper(key: number, ticks: number, difference: number): note_wrapper {
-            let note: note_wrapper = {
-                key: key,
-                ticks: ticks,
-                difference: difference,
-            }
-
-            this.log(`Generated node wrapper with key #${key} & difference ${difference} ticks.`, 'generateNoteWrapper');
-            return note;
-        }
-
         // Generates the contents of a storable json file used to read songs
         // This is probably the biggest bottleneck in performance
         // ToDo: make this more efficicent
-        private generateNotes(midi: Midi): note_wrapper[] {
+        private generateNotes(midi: Midi): note[] {
             let tracks = midi.tracks;
-            let notes: note_wrapper[] = [];
+            let notes: note[] = [];
 
             // Get all notes from each track
             for (let i = 0, il = tracks.length; i < il; i++) {
@@ -93,27 +90,27 @@ export namespace midi {
                 // Convert notes to json wrapper
                 for (let x = 0, xl = track.notes.length; x < xl; x++) {
                     let updated_key = track.notes[x].midi; // Pianos have 88 keys - midi has 128. Minus 20 to match piano range, as only piano songs will be imported.
-                    let note = this.generateNoteWrapper(updated_key, track.notes[x].ticks, -1);
-                    notes.push(note);
+                    let note_object = new note(updated_key, track.notes[x].ticks, -1);
+                    notes.push(note_object);
                 }
             }
 
             // Put notes in order by ticks
-            let sorted_notes: note_wrapper[] = [];
-            let sorting_notes: note_wrapper[] = notes;
+            let sorted_notes: note[] = [];
+            let sorting_notes: note[] = notes;
 
             // Continue until all notes are sorted
             while (sorting_notes.length > 0) {
-                let remaining_notes: note_wrapper[] = []; // Required as cannot change the array being used in the for loop
+                let remaining_notes: note[] = []; // Required as cannot change the array being used in the for loop
                 let smallest_note_index: number = 0;
 
                 // Get the smallest note & remaining notes
                 for (let i = 0, il = sorting_notes.length; i < il; i++) {
-                    let note: note_wrapper = sorting_notes[i];
+                    let note_object: note = sorting_notes[i];
                     let smallest_note = sorting_notes[smallest_note_index];
 
-                    // Found a smaller note
-                    if (note.ticks < smallest_note.ticks || i === 0) {
+                    // Found a smaller note_object
+                    if (note_object.ticks < smallest_note.ticks || i === 0) {
                         smallest_note_index = i;
                     }
                 }
@@ -121,8 +118,8 @@ export namespace midi {
                 // Add remaining notes that still need to be sorted (Not smallest)
                 for (let i = 0, il = sorting_notes.length; i < il; i++) {
                     if (i !== smallest_note_index) {
-                        let note: note_wrapper = sorting_notes[i];
-                        remaining_notes.push(note);
+                        let note_object: note = sorting_notes[i];
+                        remaining_notes.push(note_object);
                     }
                 }
 
@@ -130,47 +127,47 @@ export namespace midi {
                 sorting_notes = remaining_notes; // Replace the array of notes needing to be sorted
             }
 
-            // Add tick difference to each note
+            // Add tick difference to each note_object
             for (let i = 0, il = sorted_notes.length - 1 < 1 ? 1 : sorted_notes.length - 1; i < il; i++) {
-                let note: note_wrapper = sorted_notes[i];
-                let next_note: note_wrapper = sorted_notes[i + 1];
-                note.difference = next_note.ticks - note.ticks;
+                let note_object: note = sorted_notes[i];
+                let next_note: note = sorted_notes[i + 1];
+                note_object.difference = next_note.ticks - note_object.ticks;
             }
             this.log(`Generated ${sorted_notes.length} notes.`, 'generateNotes');
             return sorted_notes;
         }
 
-        // Generates a sequence for each tempo change in the song and assigns notes within its duration
-        private generateSequences(midi: Midi, notes: note_wrapper[]): sequence_wrapper[] {
-            let sequences: sequence_wrapper[] = [];
+        // Generates a sequence_object for each tempo change in the song and assigns notes within its duration
+        private generateSequences(midi: Midi, notes: note[]): sequence[] {
+            let sequences: sequence[] = [];
             let sorting_notes = notes;
             let tempos = midi.header.tempos;
 
-            // Create a new sequence for every tempo change
+            // Create a new sequence_object for every tempo change
             for (let i = 0, il = tempos.length; i < il; i++) {
                 let tempo = tempos[i];
-                let sequence = this.generateSequenceWrapper(tempo.bpm, tempo.ticks);
-                sequences.push(sequence);
+                let sequence_object = new sequence(tempo.bpm, tempo.ticks);
+                sequences.push(sequence_object);
             }
 
-            // Sort notes into each sequence
+            // Sort notes into each sequence_object
             for (let i = 0, il = sequences.length; i < il; i++) {
-                let sequence = sequences[i];
+                let sequence_object = sequences[i];
 
-                // Not the last sequence, able to get next sequence
+                // Not the last sequence_object, able to get next sequence_object
                 if (i < il - 1) {
                     let next_sequence = sequences[i + 1];
-                    let note = sorting_notes.shift();
+                    let note_object = sorting_notes.shift();
 
-                    while (note !== undefined && note.ticks < next_sequence.ticks) {
-                        sequence.notes.push(note);
-                        note = sorting_notes.shift();
+                    while (note_object !== undefined && note_object.ticks < next_sequence.ticks) {
+                        sequence_object.notes.push(note_object);
+                        note_object = sorting_notes.shift();
                     }
                 }
 
-                // Last element, no next sequence. Add remaining notes
+                // Last element, no next sequence_object. Add remaining notes
                 else {
-                    sequence.notes = sorting_notes;
+                    sequence_object.notes = sorting_notes;
                 }
             }
             this.log(`Created a total of ${sequences.length} sequences from ${notes.length} notes.`, 'generateSequences');
@@ -178,13 +175,13 @@ export namespace midi {
         }
 
         // Generates the contents of a storable json file used to read songs
-        private generateSongData(midi: Midi, title: string): song_wrapper {
-            let song = this.generateSongWrapper(title, midi.header.ppq);
+        public generateSongData(midi: Midi, title: string): song {
+            let song_object = new song(title, midi.header.ppq);
             let notes = this.generateNotes(midi);
             let sequences = this.generateSequences(midi, notes);
-            song.sequences = sequences;
+            song_object.setSequences(sequences);
             this.log(`Generated song data for '${title}'.`, 'generateSongData');
-            return song;
+            return song_object;
         }
 
         // Reads data from a midi file & returns its contents
@@ -195,103 +192,88 @@ export namespace midi {
             return midi;
         }
 
-        // Generates a song file from a midi file
-        public generateSongFile(midi: Midi, folder: string, filename: string, title: string) {
-            let path = `${folder}/${filename}.json`;
-            let data = this.generateSongData(midi, title);
-            fs.writeFileSync(path, JSON.stringify(data), 'utf8');
-            this.log(`Created song '${title}' at '${path}'`, 'generateSongFile');
-        }
-
-        // Gets stored json song data from a json file
-        public retreiveSongData(path: string) {
-            let data = fs.readFileSync(path).toString();
-            let json = JSON.parse(data);
-            this.log(`Retreived json data from file '${path}'.`, 'retreiveSongData');
-            return json;
-        }
-
         // Gets sequences from song data
-        public retreiveSequences(song: song_wrapper) {
-            this.log(`Retreived ${song.sequences.length} sequences from song '${song.title}'.`, 'retreiveSequences');
-            return new Array().concat(song.sequences);
+        public retreiveSequences(song_object: song) {
+            this.log(`Retreived ${song_object.retreiveSequences().length} sequences from song '${song_object.title}'.`, 'retreiveSequences');
+            return new Array().concat(song_object.retreiveSequences());
         }
 
-        // Gets notes from sequence
-        public retreiveNotes(sequence: sequence_wrapper) {
-            this.log(`Retreived ${sequence.notes.length} notes from sequence at ${sequence.ticks} ticks.`, 'retreiveNotes');
-            return new Array().concat(sequence.notes);
+        // Gets notes from sequence_object
+        public retreiveNotes(sequence_object: sequence) {
+            this.log(`Retreived ${sequence_object.notes.length} notes from sequence at ${sequence_object.ticks} ticks.`, 'retreiveNotes');
+            return new Array().concat(sequence_object.notes);
         }
 
         // Gets an array of keys that are used in a song
-        public retreiveKeyRange(song: song_wrapper): number[] {
-            let notes: note_wrapper[] = [];
+        public retreiveKeyRange(song_object: song): number[] {
+            let notes: note[] = [];
             let notes_used: number[] = [];
-            let sequences = song.sequences;
+            console.log(song_object);
+            let sequences = song_object.retreiveSequences();
 
             // Grab all notes from the song
             for (let i = 0, il = sequences.length; i < il; i++) {
-                let sequence = sequences[i];
-                notes = notes.concat(sequence.notes);
+                let sequence_object = sequences[i];
+                notes = notes.concat(sequence_object.notes);
             }
 
             // fill array of notes used
             for (let i = 0, il = notes.length; i < il; i++) {
-                let note = notes[i];
-                if (!notes_used.includes(note.key)) {
-                    notes_used.push(note.key);
+                let note_object = notes[i];
+                if (!notes_used.includes(note_object.key)) {
+                    notes_used.push(note_object.key);
                 }
             }
 
-            this.log(`Retreived ${notes_used.length} keys currently used in song '${song.title}'`, 'retreiveKeysUsed');
+            this.log(`Retreived ${notes_used.length} keys currently used in song '${song_object.title}'`, 'retreiveKeysUsed');
             return notes_used;
         }
 
-        public async playSong(song: song_wrapper, play_event_callback: (note: note_wrapper) => void, cb?: (reason: pause_reason, song: song_wrapper) => void, get_pause?: () => boolean) {
-            let pause = get_pause || function() {return false}
+        public async playSong(song_object: song, play_event_callback: (note_object: note) => void, cb?: (reason: pause_reason, song_object: song) => void, get_pause?: () => boolean) {
+            let pause = get_pause || function () { return false }
             let callback = cb || function () { };
-            let sequences = this.retreiveSequences(song);
+            let sequences = this.retreiveSequences(song_object);
 
             // Cannot use for loop as it will all be executed at once.
             for (let i = 0, il = sequences.length; i < il; i++) {
-                let sequence = sequences[i];
-                let tempo = sequence.tempo;
-                let notes = this.retreiveNotes(sequence);
-                let note = notes.shift();
-                this.log(`Loading sequence with ${sequence.ticks} ticks and ${sequence.tempo} bpm`, 'playSong');
+                let sequence_object = sequences[i];
+                let tempo = sequence_object.tempo;
+                let notes = this.retreiveNotes(sequence_object);
+                let note_object = notes.shift();
+                this.log(`Loading sequence with ${sequence_object.ticks} ticks and ${sequence_object.tempo} bpm`, 'playSong');
 
-                // Repeats whenever a new note is to be played
-                while (note !== undefined) {
+                // Repeats whenever a new note_object is to be played
+                while (note_object !== undefined) {
 
                     // Pause boolean has been set to true
                     if (pause()) {
-                        this.log(`Song '${song.title}' was paused`, 'playSong');
-                        callback('manual', this.generateSongWrapper(song.title, song.ppq, sequences));
+                        this.log(`Song '${song_object.title}' was paused`, 'playSong');
+                        callback('manual', new song(song_object.title, song_object.ppq, sequences));
                         return; // terminate
                     }
 
-                    let last_note = note;
+                    let last_note = note_object;
                     let next_note = () => {
-                        return new Promise<note_wrapper | undefined>(
+                        return new Promise<note | undefined>(
                             (resolve) => {
-                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (tempo * song.ppq)));
+                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (tempo * song_object.ppq)));
                             }
                         )
                     }
 
-                    this.log(`Note '${note.key}' was played`, 'playSong');
-                    play_event_callback(note);
-                    note = await next_note();
+                    this.log(`Note '${note_object.key}' was played`, 'playSong');
+                    play_event_callback(note_object);
+                    note_object = await next_note();
                 }
 
                 // Song was unsuccessful in playing (Notes are still remaining)
-                if (notes.length < sequence.notes.length) {
-                    callback('error', this.generateSongWrapper(song.title, song.ppq, sequences));
+                if (notes.length < sequence_object.notes.length) {
+                    callback('error', new song(song_object.title, song_object.ppq, sequences));
                 }
             }
 
             // Song finished successfully
-            callback('end', song);
+            callback('end', song_object);
         }
     }
 }
