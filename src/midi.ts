@@ -160,14 +160,14 @@ export namespace midi {
                     let note_object = sorting_notes.shift();
 
                     while (note_object !== undefined && note_object.ticks < next_sequence.ticks) {
-                        sequence_object.notes.push(note_object);
+                        sequence_object.setNotes([...sequence_object.retreiveNotes(), note_object]);
                         note_object = sorting_notes.shift();
                     }
                 }
 
                 // Last element, no next sequence_object. Add remaining notes
                 else {
-                    sequence_object.notes = sorting_notes;
+                    sequence_object.setNotes(sorting_notes);
                 }
             }
             this.log(`Created a total of ${sequences.length} sequences from ${notes.length} notes.`, 'generateSequences');
@@ -201,7 +201,7 @@ export namespace midi {
             // Grab all notes from the song
             for (let i = 0, il = sequences.length; i < il; i++) {
                 let sequence_object = sequences[i];
-                notes = notes.concat(sequence_object.notes);
+                notes = [...notes, ...sequence_object.retreiveNotes()];
             }
 
             // fill array of notes used
@@ -254,7 +254,7 @@ export namespace midi {
                 }
 
                 // Song was unsuccessful in playing (Notes are still remaining)
-                if (notes.length < sequence_object.notes.length) {
+                if (notes.length < sequence_object.retreiveNotes().length) {
                     callback('error', new song(song_object.title, song_object.ppq, sequences));
                 }
             }
