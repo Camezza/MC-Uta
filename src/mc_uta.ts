@@ -1,18 +1,32 @@
 import * as mineflayer from 'mineflayer';
 import * as prismarine_block from 'prismarine-block';
 import * as vec3 from 'vec3';
-import * as path from 'path';
 import { midi } from './midi';
 
 export namespace mc_uta {
 
     export type callback_reason = midi.song_event | 'missing';
-    export type note_block_type = 'basedrum' | 'bass' | 'harp' | 'bell' | null;
+    export type note_block_type = 'basedrum' | 'bass' | 'harp' | 'bell';
     export type note_block_sound = 'block.note_block.basedrum' | 'block.note_block.bass' | 'block.note_block.harp' | 'block.note_block.bell';
 
     const note_block_bell = ['gold_block'];
     const note_block_base = ['oak_planks', 'spruce_planks', 'birch_planks', 'acacia_planks', 'dark_oak_planks', 'jungle_planks']; // cannot be bothered adding them all. Someone fork & commit
     const note_block_basedrum = ['stone', 'netherrack']; // likewise!
+
+    const note_block_sound = {
+        basedrum: 'block.note_block.basedrum',
+        bass: 'block.note_block.bass',
+        harp: 'block.note_block.harp',
+        bell: 'block.note_block.bell',
+    };
+
+    // Find the relative key (0-24) for a note block & determine the pitch from that value (-20, as midi starts two octaves below standard piano)
+    const note_block_relative_key_offset = {
+        bell: -58 - 20,
+        harp: -34 - 20,
+        bass: -10 - 20,
+        basedrum: -2 - 20,
+    }
 
     export class note_block {
         public key: number;
@@ -44,7 +58,7 @@ export namespace mc_uta {
             this.bot = bot;
             this.debug = debug || false;
             this.midi_plugin = new midi.plugin(this.debug);
-            this.pauseMidi = () => {};
+            this.pauseMidi = () => { };
         }
 
         // Logs detailed messages to the console if debugging is enabled
@@ -59,8 +73,8 @@ export namespace mc_uta {
         }
 
         // Retreives the type of block needed to mimic an octave. (+20, as midi starts two octaves below standard piano)
-        private retreiveKeyType(key: number): note_block_type {
-            let note_block_object: note_block_type;
+        private retreiveKeyType(key: number): note_block_type | null {
+            let note_block_object: note_block_type | null;
 
             // Unable to cover 1+6 notes. (1, 83-88) (A0, G7-C8) 
             if (key > 82 + 20 || key < 2 + 20) {
@@ -89,66 +103,12 @@ export namespace mc_uta {
             return note_block_object;
         }
 
-        private retreiveNoteBlockSound(note_block_object: note_block_type): note_block_sound {
-            let sound: note_block_sound;
-            switch (note_block_object) {
-                case 'bell':
-                    sound = 'block.note_block.bell';
-                    break;
-
-                case 'harp':
-                    sound = 'block.note_block.harp';
-                    break;
-
-                case 'bass':
-                    sound = 'block.note_block.bass';
-                    break;
-
-                case 'basedrum':
-                    sound = 'block.note_block.basedrum';
-                    break;
-
-                default:
-                    this.log(`FATAL: Cannot determine sound for type of 'null'.`, 'retreiveNoteBlockSound', true);
-                    throw (`Program terminated to prevent internal error. Please enable debugging for details.`);
-            }
-            return sound;
-        }
-
-        private retreiveNoteBlockPitch(key: number): number {
+        // Unused for now
+        /*private retreiveNoteBlockPitch(key: number): number {
             let relative_key = this.retreiveNoteBlockRelativeKey(key);
             let pitch = 2 ** ((relative_key - 12) / 12);
             return pitch;
-        }
-
-        private retreiveNoteBlockRelativeKey(key: number): number {
-            let note_block_object = this.retreiveKeyType(key);
-            let relative_key;
-
-            // Find the relative key (0-24) for a note block & determine the pitch from that value
-            switch (note_block_object) {
-                case 'bell':
-                    relative_key = key - 58 - 20;
-                    break;
-
-                case 'harp':
-                    relative_key = key - 34 - 20;
-                    break;
-
-                case 'bass':
-                    relative_key = key - 10 - 20;
-                    break;
-
-                case 'basedrum':
-                    relative_key = key - 2 - 20;
-                    break;
-
-                default:
-                    this.log(`FATAL: Cannot determine relative key for type of 'null'.`, 'retreiveNoteBlockRelativeKey', true);
-                    throw (`Program terminated to prevent internal error. Please enable debugging for details.`);
-            }
-            return relative_key;
-        }
+        }*/
 
         private generateNoteBlockWrapper(key: number, type: note_block_type, block: string, position: vec3.Vec3): note_block {
             let note_block_object: note_block = {
@@ -358,7 +318,7 @@ export namespace mc_uta {
                         // Same sound
                         if (sound_type == type) {
                             this.bot.removeListener('noteHeard', note_handler);
-                            let difference = this.retreiveNoteBlockRelativeKey(note_block_object.key) - sound_key;
+                            let difference = note_block_relative_key_offset[type] + note_block_object.key - sound_key;
                             let value = difference < 0 ? 25 + difference : difference;
 
                             // Tune note block

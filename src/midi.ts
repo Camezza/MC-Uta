@@ -1,5 +1,6 @@
 import { Midi } from '@tonejs/midi';
 import * as fs from 'fs';
+const timsort = require('timsort');
 
 export namespace midi {
 
@@ -64,7 +65,7 @@ export namespace midi {
 
         constructor(debug?: boolean) {
             this.debug = debug || false;
-            this.pauseSong = () => {};
+            this.pauseSong = () => { };
         }
 
         // Logs detailed messages to the console if debugging is enabled
@@ -78,67 +79,52 @@ export namespace midi {
             }
         }
 
-        // Generates the contents of a storable json file used to read songs
-        // This is probably the biggest bottleneck in performance
-        // ToDo: make this more efficicent
-        private generateNotes(midi: Midi): note[] {
+        // Generates the notes used in sequences
+        private generateNotes(midi: Midi) {
             let tracks = midi.tracks;
+            let data: Array<number[]> = [];
             let notes: note[] = [];
 
-            // Get all notes from each track
+            // Get all notes & ticks from each track and place into seperate arrays
             for (let i = 0, il = tracks.length; i < il; i++) {
                 let track = tracks[i];
 
-                // Convert notes to json wrapper
+                // Add notes & ticks to arrays
                 for (let x = 0, xl = track.notes.length; x < xl; x++) {
-                    let updated_key = track.notes[x].midi; // Pianos have 88 keys - midi has 128. Minus 20 to match piano range, as only piano songs will be imported.
-                    let note_object = new note(updated_key, track.notes[x].ticks, -1);
-                    notes.push(note_object);
+                    data.push([track.notes[x].midi, track.notes[x].ticks]);
                 }
             }
 
-            // Put notes in order by ticks
-            let sorted_notes: note[] = [];
-            let sorting_notes: note[] = notes;
-
-            // Continue until all notes are sorted
-            while (sorting_notes.length > 0) {
-                let remaining_notes: note[] = []; // Required as cannot change the array being used in the for loop
-                let smallest_note_index: number = 0;
-
-                // Get the smallest note & remaining notes
-                for (let i = 0, il = sorting_notes.length; i < il; i++) {
-                    let note_object: note = sorting_notes[i];
-                    let smallest_note = sorting_notes[smallest_note_index];
-
-                    // Found a smaller note_object
-                    if (note_object.ticks < smallest_note.ticks || i === 0) {
-                        smallest_note_index = i;
-                    }
-                }
-
-                // Add remaining notes that still need to be sorted (Not smallest)
-                for (let i = 0, il = sorting_notes.length; i < il; i++) {
-                    if (i !== smallest_note_index) {
-                        let note_object: note = sorting_notes[i];
-                        remaining_notes.push(note_object);
-                    }
-                }
-
-                sorted_notes.push(sorting_notes[smallest_note_index]);
-                sorting_notes = remaining_notes; // Replace the array of notes needing to be sorted
+            // Define comparison for timsort
+            let comparison = (a: Array<number[]>, b: Array<number[]>) => {
+                return a[0] > b[0];
             }
 
-            // Add tick difference to each note_object
-            for (let i = 0, il = sorted_notes.length - 1 < 1 ? 1 : sorted_notes.length - 1; i < il; i++) {
-                let note_object: note = sorted_notes[i];
-                let next_note: note = sorted_notes[i + 1];
-                note_object.difference = next_note.ticks - note_object.ticks;
+            // Use timsort algorithm to sort the masses of notes quickly
+            timsort.sort(data, comparison);
+
+            // Create note objects for sorted data
+            for (let i = 0, il = data.length; i < il; i++) {
+                let object = data[i]; // get the [midi, ticks] from data
+                let note_object: note;
+
+                // Not the last element
+                if (i < il - 1) {
+                    let next_object = data[i + 1];
+                    let tick_difference = next_object[1] - object[1];
+                    note_object = new note(object[0], object[1], tick_difference);
+                }
+
+                // Last element
+                else note_object = new note(object[0], object[1], 0);
+                notes.push(note_object);
             }
-            this.log(`Generated ${sorted_notes.length} notes.`, 'generateNotes');
-            return sorted_notes;
+            this.log(`Generated a total of ${notes.length} notes from midi '${midi.name}'.`, 'generateNotes');
+            return notes;
         }
 
+        // This is the biggest bottleneck in performance.
+        // ToDo: Optimise!
         // Generates a sequence_object for each tempo change in the song and assigns notes within its duration
         private generateSequences(midi: Midi, notes: note[]): sequence[] {
             let sequences: sequence[] = [];
@@ -178,10 +164,10 @@ export namespace midi {
 
         // Generates the contents of a storable json file used to read songs
         public generateSongData(midi: Midi, title: string): song {
-            let song_object = new song(title, midi.header.ppq);
-            let notes = this.generateNotes(midi);
-            let sequences = this.generateSequences(midi, notes);
-            song_object.setSequences(sequences);
+            let song_object = new song(title, midi.header.ppq); console.time();
+            let notes = this.generateNotes(midi); console.timeEnd(); console.time();
+            let sequences = this.generateSequences(midi, notes); console.timeEnd(); console.time();
+            song_object.setSequences(sequences); console.timeEnd();
             this.log(`Generated song data for '${title}'.`, 'generateSongData');
             return song_object;
         }
@@ -220,7 +206,7 @@ export namespace midi {
 
         public async playSong(song_object: song, play_event_callback: (note_object: note) => void, cb?: (reason: song_event, song_object: song) => void) {
             let pause = false;
-            let callback = cb || function () {};
+            let callback = cb || function () { };
             let sequences = song_object.retreiveSequences();
 
             this.pauseSong = () => {
