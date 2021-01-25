@@ -16,7 +16,7 @@ This plugin requires npm to install:<br>
 `npm install -g mc-uta`
 
 ## Preview
-<img str="https://download1585.mediafire.com/7prypybnzu2g/5g7rzsabh8oxgm8/Inertia+Version+3.1.3+2021-01-25+15-12-34_Trim.gif">
+<img src="https://download1585.mediafire.com/ble26zfpq9xg/xaytfufybjxa9sx/playing.gif">
 
 ## Features
 - Discover nearby note blocks and determine sound & pitch
