@@ -3,7 +3,7 @@ import * as fs from 'fs';
 
 export namespace midi {
 
-    export type pause_reason = 'end' | 'error' | 'manual';
+    export type song_event = 'start' | 'end' | 'pause' | 'error';
 
     export class note {
         public key: number;
@@ -59,10 +59,12 @@ export namespace midi {
     }
 
     export class plugin {
-        private debug: boolean
+        private debug: boolean;
+        public pauseSong: () => void;
 
         constructor(debug?: boolean) {
             this.debug = debug || false;
+            this.pauseSong = () => {};
         }
 
         // Logs detailed messages to the console if debugging is enabled
@@ -216,16 +218,22 @@ export namespace midi {
             return notes_used;
         }
 
-        public async playSong(song_object: song, play_event_callback: (note_object: note) => void, cb?: (reason: pause_reason, song_object: song) => void, get_pause?: () => boolean) {
-            let pause = get_pause || function () { return false }
-            let callback = cb || function () { };
+        public async playSong(song_object: song, play_event_callback: (note_object: note) => void, cb?: (reason: song_event, song_object: song) => void) {
+            let pause = false;
+            let callback = cb || function () {};
             let sequences = song_object.retreiveSequences();
+
+            this.pauseSong = () => {
+                pause = true;
+            }
+            callback('start', song_object);
 
             // Cannot use for loop as it will all be executed at once.
             for (let i = 0, il = sequences.length; i < il; i++) {
                 let sequence_object = sequences[i];
-                let tempo = sequence_object.tempo;
                 let notes = sequence_object.retreiveNotes();
+                let played_notes = 0;
+                let maximum_notes = notes.length;
                 let note_object = notes.shift();
                 this.log(`Loading sequence with ${sequence_object.ticks} ticks and ${sequence_object.tempo} bpm`, 'playSong');
 
@@ -233,9 +241,9 @@ export namespace midi {
                 while (note_object !== undefined) {
 
                     // Pause boolean has been set to true
-                    if (pause()) {
+                    if (pause) {
                         this.log(`Song '${song_object.title}' was paused`, 'playSong');
-                        callback('manual', new song(song_object.title, song_object.ppq, sequences));
+                        callback('pause', new song(song_object.title, song_object.ppq, sequences));
                         return; // terminate
                     }
 
@@ -243,18 +251,19 @@ export namespace midi {
                     let next_note = () => {
                         return new Promise<note | undefined>(
                             (resolve) => {
-                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (tempo * song_object.ppq)));
+                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (sequence_object.tempo * song_object.ppq)));
                             }
                         )
                     }
 
                     this.log(`Note '${note_object.key}' was played`, 'playSong');
                     play_event_callback(note_object);
+                    played_notes++;
                     note_object = await next_note();
                 }
 
                 // Song was unsuccessful in playing (Notes are still remaining)
-                if (notes.length < sequence_object.retreiveNotes().length) {
+                if (played_notes < maximum_notes) {
                     callback('error', new song(song_object.title, song_object.ppq, sequences));
                 }
             }

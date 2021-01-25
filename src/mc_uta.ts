@@ -6,20 +6,26 @@ import { midi } from './midi';
 
 export namespace mc_uta {
 
-    export type callback_reason = midi.pause_reason | 'missing';
+    export type callback_reason = midi.song_event | 'missing';
     export type note_block_type = 'basedrum' | 'bass' | 'harp' | 'bell' | null;
     export type note_block_sound = 'block.note_block.basedrum' | 'block.note_block.bass' | 'block.note_block.harp' | 'block.note_block.bell';
 
     const note_block_bell = ['gold_block'];
     const note_block_base = ['oak_planks', 'spruce_planks', 'birch_planks', 'acacia_planks', 'dark_oak_planks', 'jungle_planks']; // cannot be bothered adding them all. Someone fork & commit
     const note_block_basedrum = ['stone', 'netherrack']; // likewise!
-    const note_block_harp = ['air', 'note_block']; // we probably don't need to use this in the future and instead can blacklist blocks that cause other sounds
 
-    export interface note_block_wrapper {
-        key: number,
-        type: note_block_type,
-        block: string,
-        position: vec3.Vec3,
+    export class note_block {
+        public key: number;
+        public type: note_block_type;
+        public block: string;
+        public position: vec3.Vec3;
+
+        constructor(key: number, type: note_block_type, block: string, position: vec3.Vec3) {
+            this.key = key;
+            this.type = type;
+            this.block = block;
+            this.position = position;
+        }
     }
 
     /*
@@ -32,11 +38,13 @@ export namespace mc_uta {
         private bot: mineflayer.Bot;
         private debug: boolean;
         private midi_plugin: midi.plugin;
+        public pauseMidi: () => void;
 
         constructor(bot: mineflayer.Bot, debug?: boolean) {
             this.bot = bot;
             this.debug = debug || false;
             this.midi_plugin = new midi.plugin(this.debug);
+            this.pauseMidi = () => {};
         }
 
         // Logs detailed messages to the console if debugging is enabled
@@ -52,38 +60,38 @@ export namespace mc_uta {
 
         // Retreives the type of block needed to mimic an octave. (+20, as midi starts two octaves below standard piano)
         private retreiveKeyType(key: number): note_block_type {
-            let note_block: note_block_type;
+            let note_block_object: note_block_type;
 
             // Unable to cover 1+6 notes. (1, 83-88) (A0, G7-C8) 
             if (key > 82 + 20 || key < 2 + 20) {
-                note_block = null;
+                note_block_object = null;
             }
 
             // Bell needs to cover 24 notes. (G5-F#7) (Range: F#5-F#7) (59-82)
             else if (key > 58 + 20) {
-                note_block = 'bell';
+                note_block_object = 'bell';
             }
 
             // Harp needs to cover 25 notes. (F#3-F#5) (Range: F#3-F#5) (34-58)
             else if (key > 33 + 20) {
-                note_block = 'harp';
+                note_block_object = 'harp';
             }
 
             // bass needs to cover 24 notes. (F#1-F3) (Range: F#1-F#3) (10-33)
             else if (key > 9 + 20) {
-                note_block = 'bass';
+                note_block_object = 'bass';
             }
 
             // basedrum needs to cover 8 notes. (A0-F1) (Range: A#0-A#2) (2-9) (basedrum starts at A#0)
             else {
-                note_block = 'basedrum';
+                note_block_object = 'basedrum';
             }
-            return note_block;
+            return note_block_object;
         }
 
-        private retreiveNoteBlockSound(note_block: note_block_type): note_block_sound {
+        private retreiveNoteBlockSound(note_block_object: note_block_type): note_block_sound {
             let sound: note_block_sound;
-            switch (note_block) {
+            switch (note_block_object) {
                 case 'bell':
                     sound = 'block.note_block.bell';
                     break;
@@ -114,11 +122,11 @@ export namespace mc_uta {
         }
 
         private retreiveNoteBlockRelativeKey(key: number): number {
-            let note_block = this.retreiveKeyType(key);
+            let note_block_object = this.retreiveKeyType(key);
             let relative_key;
 
             // Find the relative key (0-24) for a note block & determine the pitch from that value
-            switch (note_block) {
+            switch (note_block_object) {
                 case 'bell':
                     relative_key = key - 58 - 20;
                     break;
@@ -142,27 +150,27 @@ export namespace mc_uta {
             return relative_key;
         }
 
-        private generateNoteBlockWrapper(key: number, type: note_block_type, block: string, position: vec3.Vec3): note_block_wrapper {
-            let note_block: note_block_wrapper = {
+        private generateNoteBlockWrapper(key: number, type: note_block_type, block: string, position: vec3.Vec3): note_block {
+            let note_block_object: note_block = {
                 key: key,
                 type: type,
                 block: block,
                 position: position,
             }
-            this.log(`Generated note block wrapper with key '${note_block.key}' and type '${note_block.type}'`, 'generateNoteBlockWrapper');
-            return note_block;
+            this.log(`Generated note block wrapper with key '${note_block_object.key}' and type '${note_block_object.type}'`, 'generateNoteBlockWrapper');
+            return note_block_object;
         }
 
         // get number of available keys
-        private retreiveRequiredTypes(note_blocks: note_block_wrapper[], key_range: number[]): note_block_type[] {
+        private retreiveRequiredTypes(note_blocks: note_block[], key_range: number[]): note_block_type[] {
             let note_types: note_block_type[] = ['basedrum', 'bass', 'harp', 'bell'];
             let available_types: Record<string, number> = { basedrum: 0, base: 0, harp: 0, bell: 0 };
             let required_types: Record<string, number> = { basedrum: 0, base: 0, harp: 0, bell: 0 };
             let types: note_block_type[] = [];
 
             // get the number of available keys
-            note_blocks.forEach((note_block: note_block_wrapper) => {
-                let type = note_block.type;
+            note_blocks.forEach((note_block_object: note_block) => {
+                let type = note_block_object.type;
 
                 // only allow keys playable on note blocks
                 if (type !== null) {
@@ -221,38 +229,38 @@ export namespace mc_uta {
         }
 
         // Sorts note blocks by their type in a record
-        private sortNoteBlocksByType(note_blocks: note_block_wrapper[]): Record<string, note_block_wrapper[]> {
-            let sorted_note_blocks: Record<string, note_block_wrapper[]> = { basedrum: [], bass: [], harp: [], bell: [] };
+        private sortNoteBlocksByType(note_blocks: note_block[]): Record<string, note_block[]> {
+            let sorted_note_blocks: Record<string, note_block[]> = { basedrum: [], bass: [], harp: [], bell: [] };
 
             // Sort each note block into type category
-            note_blocks.forEach((note_block) => {
-                let type = note_block.type;
+            note_blocks.forEach((note_block_object) => {
+                let type = note_block_object.type;
 
                 // add note blocks with same type to array
                 if (type === null) throw new Error(`Unable to determine note block type 'null'`);
-                sorted_note_blocks[type].push(note_block);
+                sorted_note_blocks[type].push(note_block_object);
             });
 
             return sorted_note_blocks;
         }
 
         // Sorts note blocks by their key in a record
-        private sortNoteBlocksByKeys(note_blocks: note_block_wrapper[]): Record<number, note_block_wrapper> {
-            let sorted_note_blocks: Record<number, note_block_wrapper> = {};
+        private sortNoteBlocksByKeys(note_blocks: note_block[]): Record<number, note_block> {
+            let sorted_note_blocks: Record<number, note_block> = {};
 
             // Add key entry for note block key
-            note_blocks.forEach((note_block) => {
-                let key = note_block.key;
+            note_blocks.forEach((note_block_object) => {
+                let key = note_block_object.key;
                 if (sorted_note_blocks[key]) throw new Error(`Note block array cannot contain duplicate key values`);
-                sorted_note_blocks[key] = note_block;
+                sorted_note_blocks[key] = note_block_object;
             });
 
             return sorted_note_blocks;
         }
 
-        private assignNoteBlockKeys(note_blocks: note_block_wrapper[], key_range: number[]): note_block_wrapper[] {
+        private assignNoteBlockKeys(note_blocks: note_block[], key_range: number[]): note_block[] {
             let sorted_note_blocks = this.sortNoteBlocksByType(note_blocks);
-            let assigned_note_blocks: note_block_wrapper[] = [];
+            let assigned_note_blocks: note_block[] = [];
 
             for (let i = 0, il = key_range.length; i < il; i++) {
                 let key = key_range[i];
@@ -279,9 +287,9 @@ export namespace mc_uta {
         }
 
         // Plays a note block. Returns true if it was successful and false if it was insuccessful.
-        private async playNoteBlock(note_block: note_block_wrapper): Promise<boolean> {
+        private async playNoteBlock(note_block_object: note_block): Promise<boolean> {
             return new Promise<boolean>((resolve) => {
-                let position = note_block.position;
+                let position = note_block_object.position;
                 let block = this.bot.blockAt(position);
 
                 // note block exists
@@ -301,9 +309,9 @@ export namespace mc_uta {
         }
 
         // Increments a note block's pitch by right-clicking it. Returns true if it was successful, and false if it was insuccessful.
-        private async incrementNoteBlock(note_block: note_block_wrapper): Promise<boolean> {
+        private async incrementNoteBlock(note_block_object: note_block): Promise<boolean> {
             return new Promise<boolean>((resolve) => {
-                let position = note_block.position;
+                let position = note_block_object.position;
                 let block = this.bot.blockAt(position);
 
                 // note block exists
@@ -326,12 +334,12 @@ export namespace mc_uta {
         }
 
         // TODO: Fix this spaghetti mess
-        private async tuneNoteBlock(note_block: note_block_wrapper): Promise<note_block_wrapper | null> {
-            return new Promise<note_block_wrapper | null>((resolve) => {
-                let position = note_block.position;
+        private async tuneNoteBlock(note_block_object: note_block): Promise<note_block | null> {
+            return new Promise<note_block | null>((resolve) => {
+                let position = note_block_object.position;
 
                 // Leaves a 50ms delay before incrementing a note block
-                let increment_timeout = async (block: note_block_wrapper): Promise<boolean> => {
+                let increment_timeout = async (block: note_block): Promise<boolean> => {
                     return new Promise<boolean>((played) => {
                         setTimeout(() => played(this.incrementNoteBlock(block)), 50);
                     });
@@ -344,18 +352,18 @@ export namespace mc_uta {
 
                     // Sound sourced from same position as note block
                     if (position.equals(sound_position)) {
-                        let type = note_block.type
+                        let type = note_block_object.type
                         let sound_type = instrument.name;
 
                         // Same sound
                         if (sound_type == type) {
                             this.bot.removeListener('noteHeard', note_handler);
-                            let difference = this.retreiveNoteBlockRelativeKey(note_block.key) - sound_key;
+                            let difference = this.retreiveNoteBlockRelativeKey(note_block_object.key) - sound_key;
                             let value = difference < 0 ? 25 + difference : difference;
 
                             // Tune note block
                             for (let i = 0, il = value; i < il; i++) {
-                                let success = await increment_timeout(note_block);
+                                let success = await increment_timeout(note_block_object);
 
                                 // Tuning was unsuccessful; Unable to increment note block tone
                                 if (!success) {
@@ -365,14 +373,14 @@ export namespace mc_uta {
                             }
 
                             // Remove sound listener
-                            this.log(`Successfully tuned note block with key '${note_block.key}' & type '${note_block.type}'`, 'tuneNoteBlock');
-                            resolve(note_block);
+                            this.log(`Successfully tuned note block with key '${note_block_object.key}' & type '${note_block_object.type}'`, 'tuneNoteBlock');
+                            resolve(note_block_object);
                         }
                     }
                 }
 
                 this.bot.on('noteHeard', note_handler);
-                let success = this.playNoteBlock(note_block);
+                let success = this.playNoteBlock(note_block_object);
 
                 if (!success) {
                     resolve(null);
@@ -381,8 +389,8 @@ export namespace mc_uta {
         }
 
         // Gets nearby note blocks and assigns them to wrappers
-        public retreiveNearbyNoteBlocks(): note_block_wrapper[] {
-            let note_blocks: note_block_wrapper[] = [];
+        public retreiveNearbyNoteBlocks(): note_block[] {
+            let note_blocks: note_block[] = [];
             let for_each_axis = (radius: number, method: (index: number) => void) => {
                 let diameter = radius * 2;
                 for (let i = -(diameter / 2), il = diameter / 2; i <= il; i++) {
@@ -406,29 +414,29 @@ export namespace mc_uta {
 
                             // Tone block below exists & air above note block
                             if (tone_block_type !== undefined && above_block_type === 'air') {
-                                let note_block: note_block_wrapper;
+                                let note_block_object: note_block;
 
                                 // Bell
                                 if (note_block_bell.includes(tone_block_type)) {
-                                    note_block = this.generateNoteBlockWrapper(-1, 'bell', tone_block_type, block_position);
+                                    note_block_object = this.generateNoteBlockWrapper(-1, 'bell', tone_block_type, block_position);
                                 }
 
                                 // bass
                                 else if (note_block_base.includes(tone_block_type)) {
-                                    note_block = this.generateNoteBlockWrapper(-1, 'bass', tone_block_type, block_position);
+                                    note_block_object = this.generateNoteBlockWrapper(-1, 'bass', tone_block_type, block_position);
                                 }
 
                                 // basedrum
                                 else if (note_block_basedrum.includes(tone_block_type)) {
-                                    note_block = this.generateNoteBlockWrapper(-1, 'basedrum', tone_block_type, block_position);
+                                    note_block_object = this.generateNoteBlockWrapper(-1, 'basedrum', tone_block_type, block_position);
                                 }
 
                                 // Harp
                                 else {
-                                    note_block = this.generateNoteBlockWrapper(-1, 'harp', tone_block_type, block_position);
+                                    note_block_object = this.generateNoteBlockWrapper(-1, 'harp', tone_block_type, block_position);
                                 }
 
-                                note_blocks.push(note_block);
+                                note_blocks.push(note_block_object);
                             }
                         }
                     })));
@@ -436,9 +444,8 @@ export namespace mc_uta {
         }
 
         // Plays a midi song using note blocks specified
-
-        // ToDo: Pausing won't work by using a boolean as a parameter. Instead specify void that returns a boolean
-        public async playNoteBlockSong(song_path: string | midi.song, note_blocks: note_block_wrapper[], cb?: (reason: callback_reason, value: string | midi.song | note_block_type[]) => void, get_pause?: () => boolean) {
+        // ToDo: Use pause() function instead of relying on parameters
+        public async playMidi(song_path: string | midi.song, note_blocks: note_block[], cb?: (reason: callback_reason, value: string | midi.song | note_block_type[]) => void) {
             let callback = cb || function () { };
             let terminate = false;
             let song: midi.song;
@@ -466,12 +473,12 @@ export namespace mc_uta {
             let required_types = this.retreiveRequiredTypes(note_blocks, note_block_key_range);
 
             // what to do when playing a note
-            let play_event = (note: midi.note, sorted_note_blocks: Record<number, note_block_wrapper>) => {
+            let play_event = (note: midi.note, sorted_note_blocks: Record<number, note_block>) => {
                 let key = note.key;
-                let note_block = sorted_note_blocks[key];
+                let note_block_object = sorted_note_blocks[key];
 
                 // Key can be played on note block
-                if (note_block !== undefined) {
+                if (note_block_object !== undefined) {
                     let success = this.playNoteBlock(sorted_note_blocks[key]);
 
                     // Unable to play note block (missing)
@@ -483,19 +490,24 @@ export namespace mc_uta {
                 }
             }
 
-            let midi_callback = (reason: midi.pause_reason, song: midi.song) => {
+            let midi_callback = (reason: midi.song_event, song: midi.song) => {
 
                 // Prevent executing callback twice after pausing manually
                 if (!terminate) {
-                    terminate = true;
-                    
+                    terminate = reason === 'start' ? false : true;
+
                     switch (reason) {
+                        case 'start':
+                            this.pauseMidi = this.midi_plugin.pauseSong;
+                            callback('start', song);
+                            break;
+
                         case 'end':
                             callback('end', song);
                             break;
 
-                        case 'manual':
-                            callback('manual', song);
+                        case 'pause':
+                            callback('pause', song);
                             break;
 
                         case 'error':
@@ -515,10 +527,10 @@ export namespace mc_uta {
 
                 // tune all note blocks
                 for (let i = 0, il = verified_note_blocks.length; i < il; i++) {
-                    let note_block = await this.tuneNoteBlock(verified_note_blocks[i]);
+                    let note_block_object = await this.tuneNoteBlock(verified_note_blocks[i]);
 
                     // error has occured, unable to tune note block
-                    if (note_block === null) {
+                    if (note_block_object === null) {
                         terminate = true;
                         this.log(`ERROR: Note block was unable to be tuned`, 'playNoteBlockSong', true);
                         callback('error', 'unable to tune note block');
@@ -527,7 +539,7 @@ export namespace mc_uta {
                 }
 
                 // play the song
-                this.midi_plugin.playSong(song, (note) => play_event(note, sorted_note_blocks), midi_callback, get_pause);
+                this.midi_plugin.playSong(song, (note) => play_event(note, sorted_note_blocks), midi_callback);
             }
 
             // Not enough note blocks for required song
