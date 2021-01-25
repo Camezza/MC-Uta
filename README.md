@@ -17,7 +17,7 @@ This plugin requires npm to install:<br>
 
 ## Example
 ES6:<br>
-```
+```javascript
 import { mc_uta } from 'mc-uta';
 import * as mineflayer from 'mineflayer';
 
