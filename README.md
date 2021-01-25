@@ -15,6 +15,9 @@
 This plugin requires npm to install:<br>
 `npm install -g mc-uta`
 
+## Preview
+![](https://download1655.mediafire.com/b5z6ou13q7wg/8d5lguvbwk0p9hr/preview.gif)
+
 ## Features
 - Discover nearby note blocks and determine sound & pitch
 - Import MIDI files and play them in-game using note blocks
