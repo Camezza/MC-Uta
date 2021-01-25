@@ -15,6 +15,11 @@
 This plugin requires npm to install:<br>
 `npm install -g mc-uta`
 
+## Features
+- Discover nearby note blocks and determine sound & pitch
+- Import MIDI files and play them in-game using note blocks
+- Automatically tune note blocks based on MIDI key range
+
 ## Example
 ES6:<br>
 ```javascript
@@ -33,3 +38,6 @@ let note_blocks = uta.retreiveNearbyNoteBlocks();
 uta.playMidi('midi/teddybear.mid', note_blocks);
 }, 5 * 1000));
 ```
+
+## Usage
+- <i>Coming soon!</i>
