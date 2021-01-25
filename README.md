@@ -15,17 +15,21 @@
 This plugin requires npm to install:<br>
 `npm install -g mc-uta`
 
-## Usage
+## Example
 ES6:<br>
 ```
 import { mc_uta } from 'mc-uta';
+import * as mineflayer from 'mineflayer';
 
 let bot = mineflayer.createbot({
-username: "bot",
-host: "localhost",
-port: 25565,
-version: "1.16.4",
+username: "robo",
 });
 
 let uta = mc_uta.plugin(bot);
+
+bot.once('login', () => 
+setTimeout(() => {
+let note_blocks = uta.retreiveNearbyNoteBlocks();
+uta.playMidi('midi/teddybear.mid', note_blocks);
+}, 5 * 1000));
 ```
