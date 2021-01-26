@@ -82,7 +82,7 @@ export namespace mc_uta {
             }
 
             // Bell needs to cover 24 notes. (G5-F#7) (Range: F#5-F#7) (59-82)
-            else if (key > 58 + 20) {
+            else if (key > 58 + 20) { 
                 note_block_object = 'bell';
             }
 

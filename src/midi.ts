@@ -91,13 +91,13 @@ export namespace midi {
 
                 // Add notes & ticks to arrays
                 for (let x = 0, xl = track.notes.length; x < xl; x++) {
-                    data.push([track.notes[x].midi, track.notes[x].ticks]);
+                    data.push([track.notes[x].midi, track.notes[x].ticks]); // push array [midi, ticks]
                 }
             }
 
             // Define comparison for timsort
-            let comparison = (a: Array<number[]>, b: Array<number[]>) => {
-                return a[0] > b[0];
+            let comparison = (a: number[], b: number[]): number => {
+                return a[1] - b[1];
             }
 
             // Use timsort algorithm to sort the masses of notes quickly
@@ -126,7 +126,7 @@ export namespace midi {
         // This is the biggest bottleneck in performance.
         // ToDo: Optimise!
         // Generates a sequence_object for each tempo change in the song and assigns notes within its duration
-        private generateSequences(midi: Midi, notes: note[]): sequence[] {
+        private generateSequencez(midi: Midi, notes: note[]): sequence[] {
             let sequences: sequence[] = [];
             let sorting_notes = notes;
             let tempos = midi.header.tempos;
@@ -158,6 +158,62 @@ export namespace midi {
                     sequence_object.setNotes(sorting_notes);
                 }
             }
+            this.log(`Created a total of ${sequences.length} sequences from ${notes.length} notes.`, 'generateSequences');
+            return sequences;
+        }
+
+        private generateSequences(midi: Midi, notes: note[]) {
+            let data: Array<number[]> = [];
+            let sequences: sequence[] = [];
+            let tempos = midi.header.tempos;
+            let sorting_notes = [...notes];
+
+            // Gather all tempo changes into an array
+            for (let i = 0, il = tempos.length; i < il; i++) {
+                let tempo = tempos[i];
+                data.push([tempo.bpm, tempo.ticks]);
+            }
+
+            // Define comparison for timsort
+            let comparison = (a: number[], b: number[]): number => {
+                return a[1] - b[1];
+            };
+
+            // Get previous sequence notes from a sequences ticks
+            let get_previous_sequence_notes = (ticks: number): note[] => {
+                let sequence_notes: note[] = [];
+                let note_object = sorting_notes.shift();
+
+                // Less ticks than sequence ticks
+                while (note_object && note_object.ticks < ticks) {
+                    sequence_notes.push(note_object);
+                    note_object = sorting_notes.shift();
+                }
+
+                return sequence_notes;
+            }
+
+            // Sort tempo changes using timsort
+            timsort.sort(data, comparison);
+
+            // Create sequences from tempos and add notes
+            for (let i = 0, il = data.length; i < il; i++) {
+                let object = data[i];
+                let sequence_object: sequence;
+
+                // Not the last sequence
+                if (i < il - 1) {
+                    let next_object = data[i + 1];
+                    sequence_object = new sequence(object[0], object[1], get_previous_sequence_notes(next_object[1]));
+                }
+
+                // Last sequence, add remaining notes
+                else {
+                    sequence_object = new sequence(object[0], object[1], notes);
+                }
+                sequences.push(sequence_object);
+            }
+
             this.log(`Created a total of ${sequences.length} sequences from ${notes.length} notes.`, 'generateSequences');
             return sequences;
         }

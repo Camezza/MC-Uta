@@ -25,6 +25,7 @@
     "timsort": "^0.3.0"
   },
   "devDependencies": {
-    "@types/node": "^14.14.22"
+    "@types/node": "^14.14.22",
+    "@types/timsort": "^0.3.0"
   }
 }
