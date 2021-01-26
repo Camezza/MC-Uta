@@ -123,45 +123,7 @@ export namespace midi {
             return notes;
         }
 
-        // This is the biggest bottleneck in performance.
-        // ToDo: Optimise!
         // Generates a sequence_object for each tempo change in the song and assigns notes within its duration
-        private generateSequencez(midi: Midi, notes: note[]): sequence[] {
-            let sequences: sequence[] = [];
-            let sorting_notes = notes;
-            let tempos = midi.header.tempos;
-
-            // Create a new sequence_object for every tempo change
-            for (let i = 0, il = tempos.length; i < il; i++) {
-                let tempo = tempos[i];
-                let sequence_object = new sequence(tempo.bpm, tempo.ticks);
-                sequences.push(sequence_object);
-            }
-
-            // Sort notes into each sequence_object
-            for (let i = 0, il = sequences.length; i < il; i++) {
-                let sequence_object = sequences[i];
-
-                // Not the last sequence_object, able to get next sequence_object
-                if (i < il - 1) {
-                    let next_sequence = sequences[i + 1];
-                    let note_object = sorting_notes.shift();
-
-                    while (note_object !== undefined && note_object.ticks < next_sequence.ticks) {
-                        sequence_object.setNotes([...sequence_object.retreiveNotes(), note_object]);
-                        note_object = sorting_notes.shift();
-                    }
-                }
-
-                // Last element, no next sequence_object. Add remaining notes
-                else {
-                    sequence_object.setNotes(sorting_notes);
-                }
-            }
-            this.log(`Created a total of ${sequences.length} sequences from ${notes.length} notes.`, 'generateSequences');
-            return sequences;
-        }
-
         private generateSequences(midi: Midi, notes: note[]) {
             let data: Array<number[]> = [];
             let sequences: sequence[] = [];
