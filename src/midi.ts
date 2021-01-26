@@ -220,10 +220,10 @@ export namespace midi {
 
         // Generates the contents of a storable json file used to read songs
         public generateSongData(midi: Midi, title: string): song {
-            let song_object = new song(title, midi.header.ppq); console.time();
-            let notes = this.generateNotes(midi); console.timeEnd(); console.time();
-            let sequences = this.generateSequences(midi, notes); console.timeEnd(); console.time();
-            song_object.setSequences(sequences); console.timeEnd();
+            let song_object = new song(title, midi.header.ppq);
+            let notes = this.generateNotes(midi);
+            let sequences = this.generateSequences(midi, notes); 
+            song_object.setSequences(sequences); 
             this.log(`Generated song data for '${title}'.`, 'generateSongData');
             return song_object;
         }
