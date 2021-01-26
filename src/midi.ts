@@ -125,21 +125,9 @@ export namespace midi {
 
         // Generates a sequence_object for each tempo change in the song and assigns notes within its duration
         private generateSequences(midi: Midi, notes: note[]) {
-            let data: Array<number[]> = [];
             let sequences: sequence[] = [];
             let tempos = midi.header.tempos;
             let sorting_notes = [...notes];
-
-            // Gather all tempo changes into an array
-            for (let i = 0, il = tempos.length; i < il; i++) {
-                let tempo = tempos[i];
-                data.push([tempo.bpm, tempo.ticks]);
-            }
-
-            // Define comparison for timsort
-            let comparison = (a: number[], b: number[]): number => {
-                return a[1] - b[1];
-            };
 
             // Get previous sequence notes from a sequences ticks
             let get_previous_sequence_notes = (ticks: number): note[] => {
@@ -155,23 +143,20 @@ export namespace midi {
                 return sequence_notes;
             }
 
-            // Sort tempo changes using timsort
-            timsort.sort(data, comparison);
-
             // Create sequences from tempos and add notes
-            for (let i = 0, il = data.length; i < il; i++) {
-                let object = data[i];
+            for (let i = 0, il = tempos.length; i < il; i++) {
+                let tempo = tempos[i];
                 let sequence_object: sequence;
 
                 // Not the last sequence
                 if (i < il - 1) {
-                    let next_object = data[i + 1];
-                    sequence_object = new sequence(object[0], object[1], get_previous_sequence_notes(next_object[1]));
+                    let next_tempo = tempos[i + 1];
+                    sequence_object = new sequence(tempo.bpm, tempo.ticks, get_previous_sequence_notes(next_tempo.ticks));
                 }
 
                 // Last sequence, add remaining notes
                 else {
-                    sequence_object = new sequence(object[0], object[1], notes);
+                    sequence_object = new sequence(tempo.bpm, tempo.ticks, notes);
                 }
                 sequences.push(sequence_object);
             }
