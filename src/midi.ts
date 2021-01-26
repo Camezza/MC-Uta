@@ -156,7 +156,7 @@ export namespace midi {
 
                 // Last sequence, add remaining notes
                 else {
-                    sequence_object = new sequence(tempo.bpm, tempo.ticks, notes);
+                    sequence_object = new sequence(tempo.bpm, tempo.ticks, sorting_notes);
                 }
                 sequences.push(sequence_object);
             }
