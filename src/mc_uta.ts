@@ -11,7 +11,19 @@ export namespace mc_uta {
 
     const note_block_bell = ['gold_block'];
     const note_block_base = ['oak_planks', 'spruce_planks', 'birch_planks', 'acacia_planks', 'dark_oak_planks', 'jungle_planks']; // cannot be bothered adding them all. Someone fork & commit
-    const note_block_basedrum = ['stone', 'netherrack']; // likewise!
+    const note_block_basedrum = ['stone', 'netherrack', 'obsidian', 'quartz_block', 'sandstone', 'gold_ore', 'iron_ore', 'coal_ore', 'diamond_ore', 'emerald_ore', 'lapis_ore']; // Need to add quartz and sandsonte variants.
+    //Extra Noteblock Sounds: 
+    const note_block_pling = ['glowstone'];
+    const note_block_guitar = ['wool', 'white_wool', 'orange_wool', 'magenta_wool', 'light_blue_wool', 'yellow_wool', 'lime_wool', 'pink_wool', 'gray_wool', 'light_gray_wool', 'cyan_wool', 'purple_wool', 'blue_wool', 'brown_wool', 'green_wool', 'red_wool'];
+    const note_block_banjo = ['hay_block'];
+    const note_block_bit = ['emerald_block'];
+    const note_block_didgeridoo = ['pumpkin'];
+    const note_block_cowbell = ['soul_sand'];
+    const note_block_vibraphone = ['iron_block'];
+    const note_block_xylophone = ['bone_block'];
+    const note_block_flute = ['clay', ''];
+
+
 
     const note_block_sound = {
         basedrum: 'block.note_block.basedrum',
