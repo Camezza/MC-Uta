@@ -209,7 +209,7 @@ export namespace midi {
 
         // ToDo: Add options for speed, repeat, etc.
         public async playSong(song_object: song, play_event_callback: (note_object: note) => void, options: Record<string, boolean | number>, cb?: (reason: song_event, song_object: song) => void) {
-            
+
             // parameters
             let callback = cb || function () { };
 
@@ -223,8 +223,8 @@ export namespace midi {
                 pause = true;
             }
 
-            // Continue playing the same song if repeat is enabled
-            while (!pause && repeat) {
+            // Run at least once, and continue the same song if repeat is enabled & not paused
+            for (let i = 0, il = 1; i < il || (!pause && repeat); i++) {
                 let sequences = song_object.retreiveSequences();
                 callback('start', song_object);
 
