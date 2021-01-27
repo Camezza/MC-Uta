@@ -241,8 +241,7 @@ export namespace midi {
                     let next_note = () => {
                         return new Promise<note | undefined>(
                             (resolve) => {
-                                let multiplier: number = options.multiplier || 1;
-                                setTimeout(() => resolve(notes.shift()), (1/multiplier) * last_note.difference * (60000 / (sequence_object.tempo * song_object.ppq)));
+                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (sequence_object.tempo * song_object.ppq)));
                             }
                         )
                     }
