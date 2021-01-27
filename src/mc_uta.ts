@@ -495,7 +495,6 @@ export namespace mc_uta {
 
                 // Prevent executing callback twice after pausing manually
                 if (!terminate) {
-                    terminate = reason === 'start' || options?.repeat ? false : true;
 
                     switch (reason) {
                         case 'start':
