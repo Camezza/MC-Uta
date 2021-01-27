@@ -209,6 +209,7 @@ export namespace midi {
 
         // ToDo: Add options for speed, repeat, etc.
         public async playSong(song_object: song, play_event_callback: (note_object: note) => void, options: Record<string, boolean | number>, cb?: (reason: song_event, song_object: song) => void) {
+            
             // parameters
             let callback = cb || function () { };
 
