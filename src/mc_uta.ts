@@ -89,7 +89,6 @@ export namespace mc_uta {
 
     /*
     This class will need to do a number of things:
-    - Play + Pause songs.
     - Automatically fix note inaccuracies while playing a song through retuning selected note blocks
     */
 
