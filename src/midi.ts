@@ -214,7 +214,8 @@ export namespace midi {
             let callback = cb || function () { };
 
             // playsong options
-            let multiplier = options?.speed_multiplier || 1;
+            let multiplier_value = options?.speed_multiplier || 1;
+            let speed_multiplier = typeof multiplier_value === 'number' ? 1 / multiplier_value : 1; // this is required as multiplier could be defined as a boolean
             let repeat = options?.repeat || false;
 
             // Initialisation
@@ -228,13 +229,20 @@ export namespace midi {
                 let sequences = song_object.retreiveSequences();
                 callback('start', song_object);
 
-                // Cannot use for loop as it will all be executed at once.
+                // Load the next sequence (Tempo change)
                 for (let i = 0, il = sequences.length; i < il; i++) {
+
+                    // song init
                     let sequence_object = sequences[i];
                     let notes = sequence_object.retreiveNotes();
-                    let played_notes = 0;
-                    let maximum_notes = notes.length;
                     let note_object = notes.shift();
+
+                    // general init
+                    let tempo = Math.ceil(sequence_object.tempo); // decimal numbers have slower performance
+
+                    // tracking variables
+                    let played_notes = 0; // needs to match with maximum_notes to prevent an error
+                    let maximum_notes = notes.length;
                     this.log(`Loading sequence with ${sequence_object.ticks} ticks and ${sequence_object.tempo} bpm`, 'playSong');
 
                     // Repeats whenever a new note_object is to be played
@@ -251,7 +259,7 @@ export namespace midi {
                         let next_note = () => {
                             return new Promise<note | undefined>(
                                 (resolve) => {
-                                    setTimeout(() => resolve(notes.shift()), (typeof multiplier === 'number' ? multiplier : 1/1) * last_note.difference * (60000 / (sequence_object.tempo * song_object.ppq)));
+                                    setTimeout(() => resolve(notes.shift()), speed_multiplier * last_note.difference * (60000 / (tempo * song_object.ppq)));
                                 }
                             )
                         }

@@ -495,7 +495,7 @@ export namespace mc_uta {
 
                 // Prevent executing callback twice after pausing manually
                 if (!terminate) {
-                    terminate = reason === 'start' ? false : true;
+                    terminate = reason === 'start' || options?.repeat ? false : true;
 
                     switch (reason) {
                         case 'start':
@@ -504,14 +504,17 @@ export namespace mc_uta {
                             break;
 
                         case 'end':
+                            terminate = !options?.repeat || true;
                             callback('end', song);
                             break;
 
                         case 'pause':
+                            terminate = true; // forcefully terminate on pause
                             callback('pause', song);
                             break;
 
                         case 'error':
+                            terminate = true; // forcefully terminate on error
                             callback('error', 'error whilst parsing midi json file');
                             break;
 
