@@ -24,11 +24,33 @@ export namespace mc_uta {
         'jungle_planks': true,
     };
 
-    // likewise!
+    // Need to add quartz and sandsonte variants.
     const note_block_basedrum: Record<string, boolean> = {
         'stone': true,
         'netherrack': true,
-    }; 
+        'obsidian': true,
+        'quartz_block': true,
+        'sandstone': true,
+        'gold_ore': true,
+        'iron_ore': true,
+        'coal_ore': true,
+        'diamond_ore': true,
+        'emerald_ore': true,
+        'lapis_ore': true,
+    };
+    
+    //Extra Noteblock Sounds: 
+    const note_block_pling = ['glowstone'];
+    const note_block_guitar = ['wool', 'white_wool', 'orange_wool', 'magenta_wool', 'light_blue_wool', 'yellow_wool', 'lime_wool', 'pink_wool', 'gray_wool', 'light_gray_wool', 'cyan_wool', 'purple_wool', 'blue_wool', 'brown_wool', 'green_wool', 'red_wool'];
+    const note_block_banjo = ['hay_block'];
+    const note_block_bit = ['emerald_block'];
+    const note_block_didgeridoo = ['pumpkin'];
+    const note_block_cowbell = ['soul_sand'];
+    const note_block_vibraphone = ['iron_block'];
+    const note_block_xylophone = ['bone_block'];
+    const note_block_flute = ['clay', ''];
+
+
 
     const note_block_sound = {
         basedrum: 'block.note_block.basedrum',
