@@ -169,8 +169,8 @@ export namespace midi {
         public generateSongData(midi: Midi, title: string): song {
             let song_object = new song(title, midi.header.ppq);
             let notes = this.generateNotes(midi);
-            let sequences = this.generateSequences(midi, notes); 
-            song_object.setSequences(sequences); 
+            let sequences = this.generateSequences(midi, notes);
+            song_object.setSequences(sequences);
             this.log(`Generated song data for '${title}'.`, 'generateSongData');
             return song_object;
         }
@@ -209,57 +209,67 @@ export namespace midi {
 
         // ToDo: Add options for speed, repeat, etc.
         public async playSong(song_object: song, play_event_callback: (note_object: note) => void, options: Record<string, boolean | number>, cb?: (reason: song_event, song_object: song) => void) {
-            let pause = false;
+            // parameters
             let callback = cb || function () { };
-            let sequences = song_object.retreiveSequences();
 
+            // playsong options
+            let multiplier = options?.speed_multiplier || 1;
+            let repeat = options?.repeat || false;
+
+            // Initialisation
+            let pause = false;
             this.pauseSong = () => {
                 pause = true;
             }
-            callback('start', song_object);
 
-            // Cannot use for loop as it will all be executed at once.
-            for (let i = 0, il = sequences.length; i < il; i++) {
-                let sequence_object = sequences[i];
-                let notes = sequence_object.retreiveNotes();
-                let played_notes = 0;
-                let maximum_notes = notes.length;
-                let note_object = notes.shift();
-                this.log(`Loading sequence with ${sequence_object.ticks} ticks and ${sequence_object.tempo} bpm`, 'playSong');
+            // Continue playing the same song if repeat is enabled
+            while (!pause && repeat) {
+                let sequences = song_object.retreiveSequences();
+                callback('start', song_object);
 
-                // Repeats whenever a new note_object is to be played
-                while (note_object !== undefined) {
+                // Cannot use for loop as it will all be executed at once.
+                for (let i = 0, il = sequences.length; i < il; i++) {
+                    let sequence_object = sequences[i];
+                    let notes = sequence_object.retreiveNotes();
+                    let played_notes = 0;
+                    let maximum_notes = notes.length;
+                    let note_object = notes.shift();
+                    this.log(`Loading sequence with ${sequence_object.ticks} ticks and ${sequence_object.tempo} bpm`, 'playSong');
 
-                    // Pause boolean has been set to true
-                    if (pause) {
-                        this.log(`Song '${song_object.title}' was paused`, 'playSong');
-                        callback('pause', new song(song_object.title, song_object.ppq, sequences));
-                        return; // terminate
+                    // Repeats whenever a new note_object is to be played
+                    while (note_object !== undefined) {
+
+                        // Pause boolean has been set to true
+                        if (pause) {
+                            this.log(`Song '${song_object.title}' was paused`, 'playSong');
+                            callback('pause', new song(song_object.title, song_object.ppq, sequences));
+                            return; // terminate
+                        }
+
+                        let last_note = note_object;
+                        let next_note = () => {
+                            return new Promise<note | undefined>(
+                                (resolve) => {
+                                    setTimeout(() => resolve(notes.shift()), (typeof multiplier === 'number' ? multiplier : 1/1) * last_note.difference * (60000 / (sequence_object.tempo * song_object.ppq)));
+                                }
+                            )
+                        }
+
+                        this.log(`Note '${note_object.key}' was played`, 'playSong');
+                        play_event_callback(note_object);
+                        played_notes++;
+                        note_object = await next_note();
                     }
 
-                    let last_note = note_object;
-                    let next_note = () => {
-                        return new Promise<note | undefined>(
-                            (resolve) => {
-                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (sequence_object.tempo * song_object.ppq)));
-                            }
-                        )
+                    // Song was unsuccessful in playing (Notes are still remaining)
+                    if (played_notes < maximum_notes) {
+                        callback('error', new song(song_object.title, song_object.ppq, sequences));
                     }
-
-                    this.log(`Note '${note_object.key}' was played`, 'playSong');
-                    play_event_callback(note_object);
-                    played_notes++;
-                    note_object = await next_note();
                 }
 
-                // Song was unsuccessful in playing (Notes are still remaining)
-                if (played_notes < maximum_notes) {
-                    callback('error', new song(song_object.title, song_object.ppq, sequences));
-                }
+                // Song finished successfully
+                callback('end', song_object);
             }
-
-            // Song finished successfully
-            callback('end', song_object);
         }
     }
 }
