@@ -503,7 +503,7 @@ export namespace mc_uta {
                             break;
 
                         case 'end':
-                            terminate = !options?.repeat || true;
+                            terminate = options?.repeat ? false : true;
                             callback('end', song);
                             break;
 
