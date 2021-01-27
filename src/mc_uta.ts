@@ -1,3 +1,4 @@
+import { triggerAsyncId } from 'async_hooks';
 import * as mineflayer from 'mineflayer';
 import * as prismarine_block from 'prismarine-block';
 import * as vec3 from 'vec3';
@@ -9,9 +10,25 @@ export namespace mc_uta {
     export type note_block_type = 'basedrum' | 'bass' | 'harp' | 'bell';
     export type note_block_sound = 'block.note_block.basedrum' | 'block.note_block.bass' | 'block.note_block.harp' | 'block.note_block.bell';
 
-    const note_block_bell = ['gold_block'];
-    const note_block_base = ['oak_planks', 'spruce_planks', 'birch_planks', 'acacia_planks', 'dark_oak_planks', 'jungle_planks']; // cannot be bothered adding them all. Someone fork & commit
-    const note_block_basedrum = ['stone', 'netherrack']; // likewise!
+    const note_block_bell: Record<string, boolean> = {
+        'gold_block': true,
+    };
+
+    // cannot be bothered adding them all. Someone fork & commit
+    const note_block_base: Record<string, boolean> = {
+        'oak_planks': true,
+        'spruce_planks': true,
+        'birch_planks': true,
+        'acacia_planks': true,
+        'dark_oak_planks': true,
+        'jungle_planks': true,
+    };
+
+    // likewise!
+    const note_block_basedrum: Record<string, boolean> = {
+        'stone': true,
+        'netherrack': true,
+    }; 
 
     const note_block_sound = {
         basedrum: 'block.note_block.basedrum',
@@ -82,7 +99,7 @@ export namespace mc_uta {
             }
 
             // Bell needs to cover 24 notes. (G5-F#7) (Range: F#5-F#7) (59-82)
-            else if (key > 58 + 20) { 
+            else if (key > 58 + 20) {
                 note_block_object = 'bell';
             }
 
@@ -377,17 +394,17 @@ export namespace mc_uta {
                                 let note_block_object: note_block;
 
                                 // Bell
-                                if (note_block_bell.includes(tone_block_type)) {
+                                if (note_block_bell[tone_block_type]) {
                                     note_block_object = this.generateNoteBlockWrapper(-1, 'bell', tone_block_type, block_position);
                                 }
 
                                 // bass
-                                else if (note_block_base.includes(tone_block_type)) {
+                                else if (note_block_base[tone_block_type]) {
                                     note_block_object = this.generateNoteBlockWrapper(-1, 'bass', tone_block_type, block_position);
                                 }
 
                                 // basedrum
-                                else if (note_block_basedrum.includes(tone_block_type)) {
+                                else if (note_block_basedrum[tone_block_type]) {
                                     note_block_object = this.generateNoteBlockWrapper(-1, 'basedrum', tone_block_type, block_position);
                                 }
 
@@ -499,7 +516,7 @@ export namespace mc_uta {
                 }
 
                 // play the song
-                this.midi_plugin.playSong(song, (note) => play_event(note, sorted_note_blocks), midi_callback);
+                this.midi_plugin.playSong(song, (note) => play_event(note, sorted_note_blocks), {}, midi_callback);
             }
 
             // Not enough note blocks for required song

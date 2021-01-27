@@ -207,7 +207,8 @@ export namespace midi {
             return notes_used;
         }
 
-        public async playSong(song_object: song, play_event_callback: (note_object: note) => void, cb?: (reason: song_event, song_object: song) => void) {
+        // ToDo: Add options for speed, repeat, etc.
+        public async playSong(song_object: song, play_event_callback: (note_object: note) => void, options: Record<string, boolean | number>, cb?: (reason: song_event, song_object: song) => void) {
             let pause = false;
             let callback = cb || function () { };
             let sequences = song_object.retreiveSequences();
@@ -240,7 +241,8 @@ export namespace midi {
                     let next_note = () => {
                         return new Promise<note | undefined>(
                             (resolve) => {
-                                setTimeout(() => resolve(notes.shift()), last_note.difference * (60000 / (sequence_object.tempo * song_object.ppq)));
+                                let multiplier: number = options.multiplier || 1;
+                                setTimeout(() => resolve(notes.shift()), (1/multiplier) * last_note.difference * (60000 / (sequence_object.tempo * song_object.ppq)));
                             }
                         )
                     }
