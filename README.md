@@ -43,4 +43,12 @@ uta.playMidi('midi/teddybear.mid', note_blocks);
 ```
 
 ## Usage
-- <i>Coming soon!</i>
+<b>uta.retreiveNearbyNoteBlocks()</b>
+- Retreives assignable note blocks in a radius.
+<br>
+<b>uta.playMidi(path, note_blocks, <i>[options]</i>, <i>[callback]</i>)</b>
+- Automatically tunes & plays a midi file on specified note blocks.
+- Runs callback when the song stops playing.
+<br>
+<b>uta.pauseMidi()</b>
+- Stops the current midi song from playing.
